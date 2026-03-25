@@ -16,6 +16,7 @@ postgres_data/
 redis_data/
 
 # Build
+dist/
 .next/
 build/
 out/
