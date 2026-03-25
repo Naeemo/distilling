@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
+import { ContentStatus } from '@prisma/client';
 import Redis from 'ioredis';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
@@ -177,9 +178,15 @@ export class ContentService {
       throw new NotFoundException('Content not found');
     }
 
+    // 验证并转换状态
+    const validStatus = status as ContentStatus;
+    if (!Object.values(ContentStatus).includes(validStatus)) {
+      throw new BadRequestException('Invalid status');
+    }
+
     return this.prisma.content.update({
       where: { id },
-      data: { status },
+      data: { status: validStatus },
     });
   }
 
