@@ -183,6 +183,53 @@ export class ContentService {
     });
   }
 
+  async updateReadingProgress(
+    userId: string,
+    id: string,
+    data: {
+      progress: number;
+      position?: { scrollY: number; paragraphIndex?: number };
+      readingTime?: number;
+    },
+  ) {
+    const content = await this.prisma.content.findFirst({
+      where: { id, userId },
+    });
+
+    if (!content) {
+      throw new NotFoundException('Content not found');
+    }
+
+    const now = new Date();
+    const updateData: any = {
+      readingProgress: Math.min(100, Math.max(0, data.progress)),
+      lastReadAt: now,
+    };
+
+    if (data.position) {
+      updateData.readingPosition = {
+        ...data.position,
+        timestamp: now.toISOString(),
+      };
+    }
+
+    if (data.readingTime) {
+      updateData.readingTime = content.readingTime + data.readingTime;
+    }
+
+    // 如果进度超过90%，自动标记为已读
+    if (data.progress >= 90 && content.status !== 'READ') {
+      updateData.status = 'READ';
+    } else if (data.progress > 0 && content.status === 'UNREAD') {
+      updateData.status = 'READING';
+    }
+
+    return this.prisma.content.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+
   async archive(userId: string, id: string) {
     const content = await this.prisma.content.findFirst({
       where: { id, userId },

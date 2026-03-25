@@ -23,6 +23,16 @@ export interface Content {
     coverImage?: string;
     siteName?: string;
   } | null;
+  // 阅读进度
+  readingProgress: number;
+  readingPosition: {
+    scrollY: number;
+    paragraphIndex?: number;
+    timestamp: string;
+  } | null;
+  lastReadAt: string | null;
+  readCount: number;
+  readingTime: number;
   createdAt: string;
   updatedAt: string;
   tags: ContentTag[];

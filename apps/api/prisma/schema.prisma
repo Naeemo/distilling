@@ -45,18 +45,24 @@ enum SubscriptionTier {
 
 // ==================== 内容模块 ====================
 model Content {
-  id           String        @id @default(cuid())
-  userId       String
-  url          String? // 可选（手动添加纯文本时为空）
-  title        String
-  contentText  String?       @db.Text // 提取的正文
-  rawHtml      String?       @db.Text // 原始HTML（备用）
-  summary      String?       @db.Text // 当前使用的摘要
-  status       ContentStatus @default(UNREAD)
-  sourceType   SourceType    @default(WEB)
-  metadata     Json? // {author, publishDate, coverImage, siteName}
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  userId        String
+  url           String? // 可选（手动添加纯文本时为空）
+  title         String
+  contentText   String?       @db.Text // 提取的正文
+  rawHtml       String?       @db.Text // 原始HTML（备用）
+  summary       String?       @db.Text // 当前使用的摘要
+  status        ContentStatus @default(UNREAD)
+  sourceType    SourceType    @default(WEB)
+  metadata      Json? // {author, publishDate, coverImage, siteName}
+  // 阅读进度
+  readingProgress Float       @default(0) // 阅读进度 0-100
+  readingPosition Json? // {scrollY, paragraphIndex, timestamp}
+  lastReadAt      DateTime?   // 最后阅读时间
+  readCount       Int         @default(0) // 阅读次数
+  readingTime     Int         @default(0) // 累计阅读时长（秒）
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   // 关联
   user       User         @relation(fields: [userId], references: [id])

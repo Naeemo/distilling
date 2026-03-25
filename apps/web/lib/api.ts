@@ -80,6 +80,11 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       }),
+    updateProgress: (id: string, data: { progress: number; position?: { scrollY: number; paragraphIndex?: number }; readingTime?: number }) =>
+      fetchWithAuth(`/contents/${id}/progress`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
     archive: (id: string) =>
       fetchWithAuth(`/contents/${id}`, { method: 'DELETE' }),
   },

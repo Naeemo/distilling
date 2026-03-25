@@ -13,7 +13,7 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ContentService } from './content.service';
-import { CreateContentDto, CreateTextContentDto, UpdateStatusDto } from './dto';
+import { CreateContentDto, CreateTextContentDto, UpdateStatusDto, UpdateReadingProgressDto } from './dto';
 
 @ApiTags('内容')
 @Controller('contents')
@@ -76,6 +76,20 @@ export class ContentController {
     @Body() dto: UpdateStatusDto,
   ) {
     return this.contentService.updateStatus(req.user.userId, id, dto.status);
+  }
+
+  @Patch(':id/progress')
+  @ApiOperation({ summary: '更新阅读进度' })
+  async updateReadingProgress(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() dto: UpdateReadingProgressDto,
+  ) {
+    return this.contentService.updateReadingProgress(req.user.userId, id, {
+      progress: dto.progress,
+      position: dto.position,
+      readingTime: dto.readingTime,
+    });
   }
 
   @Delete(':id')

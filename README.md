@@ -2,13 +2,11 @@
 
 AI驱动的信息消化工具 - MVP版本
 
-**🚀 在线演示**: https://infodigest-demo.vercel.app (即将上线)
-
 ## 技术栈
 
 - **后端**: NestJS + Prisma + PostgreSQL + Redis
 - **前端**: Next.js v16 + React v19 + Tailwind CSS v4
-- **部署**: Vercel + Render (免费方案)
+- **部署**: Google Cloud (计划中)
 
 ## 核心功能
 
@@ -25,16 +23,6 @@ AI驱动的信息消化工具 - MVP版本
 - [ ] 深色模式
 - [ ] 导出功能
 
-## 一键部署 (完全免费)
-
-### 前端 → Vercel
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
-
-### 后端 → Render
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
-
-详细部署指南见 [DEPLOY.md](./DEPLOY.md)
-
 ## 本地开发
 
 ```bash
@@ -44,6 +32,10 @@ cd distilling
 
 # 安装依赖 (使用 pnpm)
 pnpm install
+
+# 配置环境变量
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.local.example apps/web/.env.local
 
 # 启动数据库和 Redis
 docker-compose up -d
@@ -77,8 +69,6 @@ distilling/
 │       │   └── prisma/   # 数据库 Schema
 │       └── prisma/
 ├── docker-compose.yml    # 本地开发环境
-├── vercel.json          # Vercel 部署配置
-├── render.yaml          # Render 部署配置
 └── turbo.json           # Turborepo 配置
 ```
 
@@ -87,26 +77,12 @@ distilling/
 - **Monorepo**: Turborepo + pnpm workspace
 - **前端**: Next.js 16 + React 19 + Tailwind CSS 4
 - **状态管理**: Zustand (轻量级，支持持久化)
-- **数据获取**: TanStack Query (React Query)
 - **后端**: NestJS + Prisma + Swagger
 - **AI**: OpenAI GPT + 流式响应 (SSE)
-
-## 免费服务依赖
-
-| 服务 | 用途 | 免费额度 |
-|------|------|----------|
-| Vercel | 前端托管 | 100GB/月 |
-| Render | 后端托管 | 750小时/月 |
-| Supabase | PostgreSQL | 500MB |
-| Upstash | Redis | 10k请求/天 |
 
 ## API 文档
 
 启动后端后访问: `/api/docs` 查看 Swagger UI
-
-## 贡献
-
-欢迎 Issue 和 PR!
 
 ## License
 
