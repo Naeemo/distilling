@@ -112,4 +112,31 @@ export class AuthService {
       createdAt: user.createdAt,
     };
   }
+
+  async getApiToken(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { apiToken: true },
+    });
+    return { apiToken: user?.apiToken };
+  }
+
+  async generateApiToken(userId: string) {
+    const token = require('crypto').randomBytes(32).toString('hex');
+    
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { apiToken: token },
+    });
+
+    return { apiToken: user.apiToken };
+  }
+
+  async revokeApiToken(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { apiToken: null },
+    });
+    return { success: true };
+  }
 }

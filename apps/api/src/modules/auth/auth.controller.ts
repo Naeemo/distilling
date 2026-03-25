@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, Delete, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -37,5 +37,29 @@ export class AuthController {
   @ApiOperation({ summary: '获取当前用户信息' })
   async getProfile(@Request() req) {
     return this.authService.getProfile(req.user.userId);
+  }
+
+  @Get('api-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取当前API Token' })
+  async getApiToken(@Request() req) {
+    return this.authService.getApiToken(req.user.userId);
+  }
+
+  @Post('api-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '生成新的API Token' })
+  async generateApiToken(@Request() req) {
+    return this.authService.generateApiToken(req.user.userId);
+  }
+
+  @Delete('api-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '撤销API Token' })
+  async revokeApiToken(@Request() req) {
+    return this.authService.revokeApiToken(req.user.userId);
   }
 }

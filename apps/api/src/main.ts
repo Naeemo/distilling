@@ -29,6 +29,7 @@ async function bootstrap() {
     .setDescription('AI驱动的信息消化工具 API')
     .setVersion('0.1.0')
     .addBearerAuth()
+    .addApiKey({ type: 'apiKey', name: 'X-API-Token', in: 'header' }, 'api-token')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);

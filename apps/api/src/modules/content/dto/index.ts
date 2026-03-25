@@ -1,6 +1,8 @@
 import { IsString, IsOptional, IsArray, IsNumber, IsObject, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+export * from './quick-add.dto';
+
 export class CreateContentDto {
   @ApiProperty({ example: 'https://example.com/article' })
   @IsString()

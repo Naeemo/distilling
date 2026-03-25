@@ -10,10 +10,11 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiSecurity } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ApiTokenGuard } from '../auth/api-token.guard';
 import { ContentService } from './content.service';
-import { CreateContentDto, CreateTextContentDto, UpdateStatusDto, UpdateReadingProgressDto } from './dto';
+import { CreateContentDto, CreateTextContentDto, UpdateStatusDto, UpdateReadingProgressDto, QuickAddContentDto } from './dto';
 
 @ApiTags('内容')
 @Controller('contents')
@@ -21,6 +22,19 @@ import { CreateContentDto, CreateTextContentDto, UpdateStatusDto, UpdateReadingP
 @ApiBearerAuth()
 export class ContentController {
   constructor(private readonly contentService: ContentService) {}
+
+  @Post('quick-add')
+  @UseGuards(ApiTokenGuard)
+  @ApiSecurity('api-token')
+  @ApiOperation({ summary: '快速添加内容（iOS快捷指令用）' })
+  async quickAdd(@Request() req, @Body() dto: QuickAddContentDto) {
+    return this.contentService.quickAdd(
+      req.user.userId,
+      dto.shareText,
+      dto.tags,
+      dto.note,
+    );
+  }
 
   @Post()
   @ApiOperation({ summary: '添加内容（URL）' })

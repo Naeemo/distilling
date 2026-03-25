@@ -9,6 +9,10 @@ import { REDIS_CLIENT } from '../../redis/redis.module';
 import { ContentStatus } from '@prisma/client';
 import { BrowserService } from '../browser/browser.service';
 import Redis from 'ioredis';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { Readability } from '@mozilla/readability';
+import { JSDOM } from 'jsdom';
 
 @Injectable()
 export class ContentService {
@@ -267,13 +271,12 @@ export class ContentService {
 
       // 使用 Readability 提取正文
       let contentText = '';
-      if (Readability) {
-        const { JSDOM } = require('jsdom');
+      try {
         const dom = new JSDOM(html, { url });
         const reader = new Readability(dom.window.document);
         const article = reader.parse();
         contentText = article?.textContent || '';
-      } else {
+      } catch {
         // 备用方案：使用 cheerio 提取
         contentText = $('article').text() || 
                       $('main').text() || 
@@ -301,6 +304,103 @@ export class ContentService {
     } catch (error) {
       throw new BadRequestException(`Failed to fetch URL: ${error.message}`);
     }
+  }
+
+  async quickAdd(userId: string, shareText: string, tags?: string[], note?: string) {
+    // 从分享文本中提取 URL
+    const url = this.extractUrlFromText(shareText);
+    
+    if (!url) {
+      throw new BadRequestException('No URL found in share text');
+    }
+
+    // 检查URL是否已存在
+    const existing = await this.prisma.content.findFirst({
+      where: { userId, url },
+    });
+
+    if (existing) {
+      // 如果已存在，返回已有内容信息
+      return {
+        success: true,
+        contentId: existing.id,
+        title: existing.title,
+        url: existing.url,
+        message: 'Content already exists',
+        isExisting: true,
+      };
+    }
+
+    // 抓取网页内容
+    const { title, contentText, metadata } = await this.fetchWebContent(url);
+
+    // 创建内容
+    const content = await this.prisma.content.create({
+      data: {
+        userId,
+        url,
+        title,
+        contentText,
+        metadata: {
+          ...metadata,
+          quickAddNote: note,
+          quickAddSource: 'ios_shortcut',
+        },
+        sourceType: 'WEB',
+      },
+    });
+
+    // 添加标签关联
+    if (tags && tags.length > 0) {
+      // 查找或创建标签
+      for (const tagName of tags) {
+        const tag = await this.prisma.tag.upsert({
+          where: { 
+            userId_name: { userId, name: tagName }
+          },
+          update: {},
+          create: {
+            userId,
+            name: tagName,
+            color: this.getRandomTagColor(),
+          },
+        });
+
+        await this.prisma.contentTag.create({
+          data: {
+            contentId: content.id,
+            tagId: tag.id,
+          },
+        });
+      }
+    }
+
+    // 创建初始复习计划
+    await this.createInitialReview(userId, content.id);
+
+    return {
+      success: true,
+      contentId: content.id,
+      title: content.title,
+      url: content.url,
+      message: 'Content added successfully',
+      isExisting: false,
+    };
+  }
+
+  private extractUrlFromText(text: string): string | null {
+    // 匹配 URL 的正则表达式
+    const urlRegex = /(https?:\/\/[^\s]+)/i;
+    const match = text.match(urlRegex);
+    return match ? match[1] : null;
+  }
+
+  private getRandomTagColor(): string {
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+      '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
   }
 
   private async createInitialReview(userId: string, contentId: string) {
