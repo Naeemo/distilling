@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
@@ -11,6 +11,18 @@ import type { Highlight, Summary } from '@/types';
 
 type ViewMode = 'summary' | 'full';
 type SummaryType = 'QUICK' | 'DETAILED' | 'BULLET';
+
+// 防抖函数
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
 export default function ReaderPage() {
   const params = useParams();
@@ -29,10 +41,73 @@ export default function ReaderPage() {
   const [showHighlightMenu, setShowHighlightMenu] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState({ x: 0, y: 0 });
+  const [readingProgress, setReadingProgress] = useState(0);
+  const [isRestoringPosition, setIsRestoringPosition] = useState(true);
+  
+  const articleRef = useRef<HTMLElement>(null);
+  const progressSaveRef = useRef({ progress: 0, position: { scrollY: 0 }, readingTime: 0 });
+  const readingStartTime = useRef(Date.now());
+  const hasScrolled = useRef(false);
 
+  // 加载内容
   useEffect(() => {
     loadContent();
+    
+    // 清理函数：记录阅读时间
+    return () => {
+      const duration = Math.floor((Date.now() - readingStartTime.current) / 1000);
+      if (duration > 5 && contentId) {
+        saveProgress(true);
+      }
+    };
   }, [contentId]);
+
+  // 恢复阅读位置
+  useEffect(() => {
+    if (!content || !articleRef.current || !isRestoringPosition) return;
+    
+    // 如果有保存的阅读位置，恢复滚动
+    if (content.readingPosition?.scrollY && content.readingPosition.scrollY > 0) {
+      // 延迟恢复，确保页面渲染完成
+      setTimeout(() => {
+        window.scrollTo({
+          top: content.readingPosition!.scrollY,
+          behavior: 'smooth'
+        });
+        setIsRestoringPosition(false);
+      }, 300);
+    } else {
+      setIsRestoringPosition(false);
+    }
+  }, [content, isRestoringPosition]);
+
+  // 监听滚动，计算进度
+  useEffect(() => {
+    const handleScroll = () => {
+      hasScrolled.current = true;
+      
+      if (!articleRef.current) return;
+      
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min(100, Math.round((scrollTop / docHeight) * 100)) : 0;
+      
+      setReadingProgress(progress);
+      
+      // 保存到 ref 供防抖函数使用
+      progressSaveRef.current = {
+        progress,
+        position: { scrollY: scrollTop },
+        readingTime: Math.floor((Date.now() - readingStartTime.current) / 1000)
+      };
+      
+      // 防抖保存进度
+      debouncedSaveProgress();
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const loadContent = async () => {
     setIsLoading(true);
@@ -41,11 +116,47 @@ export default function ReaderPage() {
       setContent(data);
       setSelectedContent(data);
       setHighlights(data.highlights || []);
+      setReadingProgress(data.readingProgress || 0);
     } catch (error) {
       console.error('Failed to load content:', error);
       router.push('/dashboard');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 防抖保存进度（3秒延迟）
+  const debouncedSaveProgress = useCallback(
+    debounce(() => {
+      saveProgress(false);
+    }, 3000),
+    [contentId]
+  );
+
+  // 保存阅读进度
+  const saveProgress = async (isUnmount = false) => {
+    if (!contentId || !hasScrolled.current) return;
+    
+    const { progress, position, readingTime } = progressSaveRef.current;
+    
+    try {
+      await api.contents.updateProgress(contentId, {
+        progress,
+        position,
+        readingTime: readingTime > 0 ? readingTime : undefined
+      });
+      
+      // 更新本地状态
+      setContent(prev => prev ? { 
+        ...prev, 
+        readingProgress: progress,
+        readingPosition: { ...position, timestamp: new Date().toISOString() },
+        readingTime: (prev.readingTime || 0) + (readingTime > 0 ? readingTime : 0)
+      } : prev);
+    } catch (error) {
+      if (!isUnmount) {
+        console.error('Failed to save progress:', error);
+      }
     }
   };
 
@@ -124,8 +235,16 @@ export default function ReaderPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200">
+        <div 
+          className="h-full bg-primary-600 transition-all duration-300"
+          style={{ width: `${readingProgress}%` }}
+        />
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-white border-b border-gray-200">
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <button
             onClick={() => router.push('/dashboard')}
@@ -137,7 +256,11 @@ export default function ReaderPage() {
             返回
           </button>
 
-          <div className="flex items-center gap-2">
+          {/* Progress Display */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">
+              已读 {readingProgress}%
+            </span>
             <select
               value={content.status}
               onChange={(e) => updateStatus(e.target.value)}
@@ -152,7 +275,7 @@ export default function ReaderPage() {
       </header>
 
       {/* Content */}
-      <article className="max-w-4xl mx-auto px-6 py-8">
+      <article ref={articleRef} className="max-w-4xl mx-auto px-6 py-8">
         {/* Title */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">{content.title}</h1>
@@ -175,6 +298,21 @@ export default function ReaderPage() {
               </a>
             )}
           </div>
+
+          {/* Reading Progress Info */}
+          {(content.readingProgress > 0 || content.readingTime > 0) && (
+            <div className="mt-4 flex items-center gap-4 text-xs text-gray-400">
+              {content.readingProgress > 0 && (
+                <span>上次读到 {content.readingProgress}%</span>
+              )}
+              {content.readingTime > 0 && (
+                <span>累计阅读 {Math.floor(content.readingTime / 60)} 分钟</span>
+              )}
+              {content.readCount > 0 && (
+                <span>阅读 {content.readCount} 次</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* View Mode Tabs */}
@@ -201,7 +339,7 @@ export default function ReaderPage() {
           </button>
         </div>
 
-        {/* Summary View */}
+        {/* Content */}
         <div className="space-y-6">
           {viewMode === 'summary' ? (
             <>
