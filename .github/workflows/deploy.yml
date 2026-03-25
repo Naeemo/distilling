@@ -1,0 +1,152 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION || 'asia-east1' }}
+  SERVICE_NAME: infodigest-api
+  FRONTEND_SERVICE: infodigest-web
+
+jobs:
+  # 构建并部署后端 API
+  deploy-api:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker gcr.io,asia.gcr.io
+
+      # 构建后端 Docker 镜像
+      - name: Build API Image
+        run: |
+          docker build \
+            -f apps/api/Dockerfile \
+            -t asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
+            -t asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+            .
+
+      - name: Push API Image
+        run: |
+          docker push asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA
+          docker push asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest
+
+      # 部署到 Cloud Run
+      - name: Deploy API to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --image asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-secrets DATABASE_URL=database-url:latest \
+            --set-secrets REDIS_URL=redis-url:latest \
+            --set-secrets OPENAI_API_KEY=stepfun-api-key:latest \
+            --set-secrets JWT_SECRET=jwt-secret:latest \
+            --set-env-vars OPENAI_BASE_URL=https://api.stepfun.com/v1 \
+            --set-env-vars OPENAI_MODEL=step-3.5-flash \
+            --set-env-vars FRONTEND_URL=https://${{ env.FRONTEND_SERVICE }}-$PROJECT_ID-$REGION.run.app \
+            --memory 1Gi \
+            --cpu 1 \
+            --concurrency 80 \
+            --max-instances 10 \
+            --min-instances 0
+
+  # 构建并部署前端
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: |
+          cd apps/web
+          echo "NEXT_PUBLIC_API_URL=https://${{ env.SERVICE_NAME }}-$PROJECT_ID-$REGION.run.app" >> .env.local
+          pnpm build
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy Frontend to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.FRONTEND_SERVICE }}
+          region: ${{ env.REGION }}
+          source: apps/web
+          env_vars: |
+            NEXT_PUBLIC_API_URL=https://${{ env.SERVICE_NAME }}-$PROJECT_ID-$REGION.run.app
+
+  # 数据库迁移（可选，谨慎使用）
+  migrate-db:
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    if: github.ref == 'refs/heads/main'
+    environment: production  # 需要手动审批
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd apps/api
+          npm install prisma @prisma/client
+
+      - name: Run migrations
+        run: |
+          cd apps/api
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
