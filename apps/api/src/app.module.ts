@@ -7,7 +7,6 @@ import { AiModule } from './modules/ai/ai.module';
 import { HighlightModule } from './modules/highlight/highlight.module';
 import { TagModule } from './modules/tag/tag.module';
 import { ReviewModule } from './modules/review/review.module';
-import { EmailModule } from './modules/email/email.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 
@@ -26,7 +25,6 @@ import { RedisModule } from './redis/redis.module';
     HighlightModule,
     TagModule,
     ReviewModule,
-    EmailModule,
   ],
 })
 export class AppModule {}
