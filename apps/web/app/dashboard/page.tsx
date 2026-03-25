@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardBody } from '@/components/ui/card';
+import { QuickCollect } from '@/components/QuickCollect';
 import { api } from '@/lib/api';
 import { useContentStore } from '@/stores/content';
 import { formatRelativeTime, truncate } from '@/lib/utils';
@@ -21,11 +21,7 @@ export default function DashboardPage() {
     setLoading,
     setFilterStatus,
     setSearchQuery,
-    addContent,
   } = useContentStore();
-
-  const [urlInput, setUrlInput] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     loadContents();
@@ -43,22 +39,6 @@ export default function DashboardPage() {
       console.error('Failed to load contents:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAddUrl = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!urlInput.trim()) return;
-
-    setIsAdding(true);
-    try {
-      const content = await api.contents.create(urlInput.trim());
-      addContent(content);
-      setUrlInput('');
-    } catch (error: any) {
-      alert(error.message || '添加失败');
-    } finally {
-      setIsAdding(false);
     }
   };
 
@@ -88,22 +68,8 @@ export default function DashboardPage() {
         <p className="text-gray-500 dark:text-gray-400">管理您的所有内容和笔记</p>
       </div>
 
-      {/* Add URL */}
-      <Card className="mb-6">
-        <CardBody>
-          <form onSubmit={handleAddUrl} className="flex gap-3">
-            <Input
-              placeholder="粘贴文章链接..."
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              className="flex-1"
-            />
-            <Button type="submit" isLoading={isAdding}>
-              添加
-            </Button>
-          </form>
-        </CardBody>
-      </Card>
+      {/* Quick Collect - 支持链接、文本、Markdown */}
+      <QuickCollect onSuccess={loadContents} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-6">

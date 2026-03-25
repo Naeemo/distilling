@@ -1,0 +1,191 @@
+{
+  "name": "知萃保存",
+  "description": "一键保存微信公众号文章到知萃",
+  "icon": "bookmark",
+  "color": "#3B82F6",
+  "inputs": [
+    {
+      "type": "url",
+      "label": "文章链接"
+    },
+    {
+      "type": "text",
+      "label": "文章内容"
+    }
+  ],
+  "actions": [
+    {
+      "type": "comment",
+      "text": "知萃保存快捷指令 - 版本 1.0"
+    },
+    {
+      "type": "get_variable",
+      "variable": "Shortcut Input"
+    },
+    {
+      "type": "if",
+      "condition": {
+        "type": "contains",
+        "value": "mp.weixin.qq.com"
+      },
+      "actions_if": [
+        {
+          "type": "comment",
+          "text": "微信文章链接 - 直接提取 URL"
+        },
+        {
+          "type": "set_variable",
+          "name": "article_url",
+          "value": "Shortcut Input"
+        },
+        {
+          "type": "get_contents_of_url",
+          "url": "Shortcut Input",
+          "method": "GET",
+          "output": "page_content"
+        },
+        {
+          "type": "match_text",
+          "input": "page_content",
+          "pattern": "\u003ctitle[^\u003e]*\u003e(.*?)\u003c/title\u003e",
+          "output": "title_match"
+        },
+        {
+          "type": "set_variable",
+          "name": "article_title",
+          "value": "标题匹配组 1"
+        }
+      ],
+      "actions_else": [
+        {
+          "type": "comment",
+          "text": "普通文本 - 尝试提取链接"
+        },
+        {
+          "type": "match_text",
+          "input": "Shortcut Input",
+          "pattern": "https?://[^\\s]+",
+          "output": "url_match"
+        },
+        {
+          "type": "if",
+          "condition": {
+            "type": "has_value",
+            "value": "URL 匹配"
+          },
+          "actions_if": [
+            {
+              "type": "set_variable",
+              "name": "article_url",
+              "value": "URL 匹配"
+            },
+            {
+              "type": "split_text",
+              "input": "Shortcut Input",
+              "separator": "\\n",
+              "output": "lines"
+            },
+            {
+              "type": "get_item_from_list",
+              "list": "lines",
+              "index": 1,
+              "output": "article_title"
+            }
+          ],
+          "actions_else": [
+            {
+              "type": "comment",
+              "text": "纯文本内容"
+            },
+            {
+              "type": "set_variable",
+              "name": "content_type",
+              "value": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "get_variable",
+      "variable": "content_type"
+    },
+    {
+      "type": "if",
+      "condition": {
+        "type": "is",
+        "value": "text"
+      },
+      "actions_if": [
+        {
+          "type": "comment",
+          "text": "保存纯文本内容"
+        },
+        {
+          "type": "get_input",
+          "prompt": "输入知萃 API 密钥",
+          "type": "text",
+          "key": "api_key"
+        },
+        {
+          "type": "get_contents_of_url",
+          "url": "https://api.infodigest.app/v1/contents/text",
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{api_key}}"
+          },
+          "body": {
+            "title": "来自 iOS 快捷指令",
+            "contentText": "{{Shortcut Input}}",
+            "sourceType": "IOS_SHORTCUT"
+          }
+        }
+      ],
+      "actions_else": [
+        {
+          "type": "comment",
+          "text": "保存链接内容"
+        },
+        {
+          "type": "get_input",
+          "prompt": "输入知萃 API 密钥",
+          "type": "text",
+          "key": "api_key"
+        },
+        {
+          "type": "get_contents_of_url",
+          "url": "https://api.infodigest.app/v1/contents",
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{api_key}}"
+          },
+          "body": {
+            "url": "{{article_url}}",
+            "tags": ["iOS快捷指令"]
+          }
+        }
+      ]
+    },
+    {
+      "type": "show_notification",
+      "title": "知萃",
+      "body": "内容已保存成功！",
+      "sound": "default"
+    }
+  ],
+  "setup": {
+    "questions": [
+      {
+        "key": "api_key",
+        "label": "知萃 API 密钥",
+        "type": "secure_text",
+        "description": "在知萃 Web 端「设置 → 开发者」中获取 API 密钥"
+      }
+    ]
+  },
+  "import_url": "https://infodigest.app/shortcuts/save",
+  "version": "1.0",
+  "min_ios": "14.0"
+}
