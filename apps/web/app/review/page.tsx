@@ -76,30 +76,30 @@ export default function ReviewPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <button
               onClick={() => router.push('/dashboard')}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-2xl font-bold">今日复习</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">今日复习</h1>
           </div>
           
-          <p className="text-gray-500">基于间隔重复算法，帮助您长期记忆知识</p>
+          <p className="text-gray-500 dark:text-gray-400">基于间隔重复算法，帮助您长期记忆知识</p>
         </div>
 
         {/* Stats */}
@@ -107,28 +107,28 @@ export default function ReviewPage() {
           <Card>
             <CardBody className="text-center">
               <p className="text-2xl font-bold text-primary-600">{stats.totalDue}</p>
-              <p className="text-sm text-gray-500">待复习</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">待复习</p>
             </CardBody>
           </Card>
           
           <Card>
             <CardBody className="text-center">
               <p className="text-2xl font-bold text-green-600">{stats.completedToday}</p>
-              <p className="text-sm text-gray-500">今日完成</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">今日完成</p>
             </CardBody>
           </Card>
           
           <Card>
             <CardBody className="text-center">
-              <p className="text-2xl font-bold">{stats.totalReviews}</p>
-              <p className="text-sm text-gray-500">总复习数</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalReviews}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">总复习数</p>
             </CardBody>
           </Card>
           
           <Card>
             <CardBody className="text-center">
-              <p className="text-2xl font-bold">{stats.averageEaseFactor.toFixed(1)}</p>
-              <p className="text-sm text-gray-500">平均难度</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.averageEaseFactor.toFixed(1)}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">平均难度</p>
             </CardBody>
           </Card>
         </div>
@@ -138,7 +138,7 @@ export default function ReviewPage() {
           {activeReview ? (
             <>
               <div className="text-center mb-4">
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   剩余 {reviews.length} 项待复习
                 </span>
               </div>
@@ -146,23 +146,23 @@ export default function ReviewPage() {
               <Card className="min-h-[400px]">
                 <CardBody className="flex flex-col">
                   <div className="flex-1">
-                    <h2 className="text-xl font-semibold mb-4">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                       {activeReview.content.title}
                     </h2>
                     
                     {activeReview.content.summary ? (
-                      <div className="prose max-w-none mb-6">
-                        <p className="whitespace-pre-wrap text-gray-700">
+                      <div className="prose max-w-none dark:prose-invert mb-6">
+                        <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                           {showAnswer
                             ? activeReview.content.summary
                             : truncate(activeReview.content.summary, 200) + '...'}
                         </p>
                       </div>
                     ) : (
-                      <p className="text-gray-500 mb-6">
+                      <p className="text-gray-500 dark:text-gray-400 mb-6">
                         暂无摘要，<button
                           onClick={() => router.push(`/reader/${activeReview.content.id}`)}
-                          className="text-primary-600 hover:underline"
+                          className="text-primary-600 dark:text-primary-400 hover:underline"
                         >
                           去阅读页面生成
                         </button>
@@ -172,7 +172,7 @@ export default function ReviewPage() {
                     {!showAnswer && activeReview.content.summary && (
                       <button
                         onClick={() => setShowAnswer(true)}
-                        className="mx-auto block px-6 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors"
+                        className="mx-auto block px-6 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition-colors"
                       >
                         显示完整摘要
                       </button>
@@ -180,8 +180,8 @@ export default function ReviewPage() {
                   </div>
 
                   {showAnswer && (
-                    <div className="border-t pt-6 mt-6">
-                      <p className="text-sm text-gray-500 text-center mb-4">
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-4">
                         您还记得这些内容吗？
                       </p>
                       
@@ -207,13 +207,13 @@ export default function ReviewPage() {
             </>
           ) : (
             <div className="text-center py-20">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-10 h-10 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold mb-2">今日复习完成！</h2>
-              <p className="text-gray-500 mb-6">您已完成所有待复习的内容，明天再来吧~</p>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">今日复习完成！</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">您已完成所有待复习的内容，明天再来吧~</p>
               
               <Button onClick={() => router.push('/dashboard')}>
                 返回知识库
