@@ -73,10 +73,10 @@ export default function DashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'UNREAD': return 'bg-gray-100 text-gray-600';
-      case 'READING': return 'bg-yellow-100 text-yellow-700';
-      case 'READ': return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100';
+      case 'UNREAD': return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
+      case 'READING': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
+      case 'READ': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+      default: return 'bg-gray-100 dark:bg-gray-700';
     }
   };
 
@@ -84,8 +84,8 @@ export default function DashboardPage() {
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">知识库</h1>
-        <p className="text-gray-500">管理您的所有内容和笔记</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">知识库</h1>
+        <p className="text-gray-500 dark:text-gray-400">管理您的所有内容和笔记</p>
       </div>
 
       {/* Add URL */}
@@ -119,8 +119,8 @@ export default function DashboardPage() {
               onClick={() => setFilterStatus(filter.value)}
               className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
                 filterStatus === filter.value
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'bg-white text-gray-600 hover:bg-gray-100'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {filter.label}
@@ -145,8 +145,8 @@ export default function DashboardPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
           </div>
         ) : contents.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-            <p className="text-gray-500">暂无内容，添加一个链接开始吧</p>
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <p className="text-gray-500 dark:text-gray-400">暂无内容，添加一个链接开始吧</p>
           </div>
         ) : (
           contents.map((content: Content) => (
@@ -159,7 +159,7 @@ export default function DashboardPage() {
               <CardBody>
                 <div className="flex items-start gap-4">
                   {/* Cover */}
-                  <div className="w-24 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
+                  <div className="w-24 h-16 bg-gray-100 dark:bg-gray-700 rounded-lg flex-shrink-0 overflow-hidden">
                     {content.metadata?.coverImage ? (
                       <img
                         src={content.metadata.coverImage}
@@ -167,7 +167,7 @@ export default function DashboardPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
@@ -177,11 +177,11 @@ export default function DashboardPage() {
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 mb-1 truncate">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
                       {content.title}
                     </h3>
                     
-                    <p className="text-sm text-gray-500 mb-2">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                       {content.url && (
                         <>
                           <span className="truncate">{new URL(content.url).hostname}</span>
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                     </p>
 
                     {content.summary && (
-                      <p className="text-sm text-gray-600 line-clamp-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                         {truncate(content.summary, 150)}
                       </p>
                     )}
@@ -201,6 +201,13 @@ export default function DashboardPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(content.status)}`}>
                         {getStatusLabel(content.status)}
                       </span>
+
+                      {/* Reading Progress */}
+                      {content.readingProgress > 0 && content.status !== 'READ' && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          已读 {content.readingProgress}%
+                        </span>
+                      )}
                       
                       {content.tags?.map((tag) => (
                         <span
