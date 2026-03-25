@@ -19,3 +19,6 @@ redis_data/
 .next/
 build/
 out/
+
+# pnpm
+.pnpm-store/
