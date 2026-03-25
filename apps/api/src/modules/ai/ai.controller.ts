@@ -12,14 +12,18 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AiService } from './ai.service';
-import { SummarizeDto } from './dto';
+import { ArticleAnalysisService } from './article-analysis.service';
+import { SummarizeDto, AnalyzeArticleDto } from './dto';
 
 @ApiTags('AI')
-@Controller('ai')
+@Controller('api/v1/ai')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(
+    private readonly aiService: AiService,
+    private readonly articleAnalysisService: ArticleAnalysisService,
+  ) {}
 
   @Post('summarize')
   @ApiOperation({ summary: '生成摘要（流式）' })
@@ -63,5 +67,31 @@ export class AiController {
   @ApiOperation({ summary: '获取摘要历史' })
   async getSummaries(@Request() req, @Param('id') id: string) {
     return this.aiService.getSummaries(id);
+  }
+
+  @Post('analyze')
+  @ApiOperation({ summary: '分析文章质量（知萃方法论）' })
+  async analyzeArticle(@Request() req, @Body() dto: AnalyzeArticleDto) {
+    const result = await this.articleAnalysisService.analyzeArticle(
+      dto.title,
+      dto.content,
+    );
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Post('analyze/quick')
+  @ApiOperation({ summary: '快速质量评分' })
+  async quickAnalyze(@Request() req, @Body() dto: { title: string; excerpt?: string }) {
+    const result = await this.articleAnalysisService.quickQualityScore(
+      dto.title,
+      dto.excerpt,
+    );
+    return {
+      success: true,
+      data: result,
+    };
   }
 }
