@@ -32,28 +32,27 @@ function detectInputType(text: string): 'url' | 'wechat' | 'text' {
 // 从微信分享文本中提取链接和标题
 function parseWechatShare(text: string): { url: string; title: string } | null {
   // 匹配常见的微信分享格式
-  const patterns = [
-    // 格式: 标题
-    // 链接
-    /(.+?)\n+(https?:\/\/[^\s]+)/s,
-    
-    // 格式: 【标题】
-    // 链接
-    /【(.+?)】\n+(https?:\/\/[^\s]+)/s,
-    
-    // 格式: 纯链接
-    /(https?:\/\/[^\s]+)/,
-  ];
+  // 格式: 标题
+  // 链接
+  const pattern1 = /(.+?)\n+(https?:\/\/[^\s]+)/;
+  const match1 = text.match(pattern1);
+  if (match1) {
+    return { title: match1[1].trim(), url: match1[2].trim() };
+  }
   
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      if (match[2]) {
-        return { title: match[1].trim(), url: match[2].trim() };
-      } else if (match[1] && match[1].startsWith('http')) {
-        return { title: '微信文章', url: match[1].trim() };
-      }
-    }
+  // 格式: 【标题】
+  // 链接
+  const pattern2 = /【(.+?)】\n+(https?:\/\/[^\s]+)/;
+  const match2 = text.match(pattern2);
+  if (match2) {
+    return { title: match2[1].trim(), url: match2[2].trim() };
+  }
+  
+  // 格式: 纯链接
+  const pattern3 = /(https?:\/\/[^\s]+)/;
+  const match3 = text.match(pattern3);
+  if (match3) {
+    return { title: '微信文章', url: match3[1].trim() };
   }
   
   return null;
