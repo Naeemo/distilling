@@ -7,24 +7,15 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import { ContentStatus } from '@prisma/client';
+import { BrowserService } from '../browser/browser.service';
 import Redis from 'ioredis';
-import * as cheerio from 'cheerio';
-import axios from 'axios';
-
-// 动态导入 Readability
-let Readability: any;
-try {
-  const { Readability: R } = require('@mozilla/readability');
-  Readability = R;
-} catch {
-  Readability = null;
-}
 
 @Injectable()
 export class ContentService {
   constructor(
     private prisma: PrismaService,
     @Inject(REDIS_CLIENT) private redis: Redis,
+    private browserService: BrowserService,
   ) {}
 
   async createFromUrl(userId: string, url: string, tagIds?: string[]) {

@@ -1,0 +1,20 @@
+{
+  "name": "infodigest-extension",
+  "version": "1.0.0",
+  "description": "InfoDigest Chrome 扩展 - 一键保存微信文章",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.246",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [
+    "chrome-extension",
+    "wechat",
+    "infodigest"
+  ],
+  "license": "MIT"
+}

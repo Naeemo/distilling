@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfoDigest 收藏助手</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 360px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 24px;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* 状态卡片 */
+    .status-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .status-card.success {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+    }
+
+    .status-card.warning {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+    }
+
+    .status-card.error {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+    }
+
+    .status-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .status-content {
+      flex: 1;
+    }
+
+    .status-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .status-card.success .status-title { color: #166534; }
+    .status-card.warning .status-title { color: #92400e; }
+    .status-card.error .status-title { color: #991b1b; }
+
+    .status-message {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    /* 文章预览 */
+    .article-preview {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .article-preview.hidden {
+      display: none;
+    }
+
+    .article-meta {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .article-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* 按钮 */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      margin-top: 8px;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e2e8f0;
+    }
+
+    /* 登录指引 */
+    .login-guide {
+      background: #f0f9ff;
+      border: 1px solid #7dd3fc;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .login-guide.hidden {
+      display: none;
+    }
+
+    .login-guide-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .login-guide-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0369a1;
+      margin-bottom: 8px;
+    }
+
+    .login-guide-text {
+      font-size: 12px;
+      color: #0ea5e9;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .login-guide-link {
+      color: #0284c7;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    /* 底部 */
+    .footer {
+      text-align: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .footer-text {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">📚</div>
+      <h1>InfoDigest</h1>
+      <p>一键收藏公众号文章</p>
+    </div>
+
+    <!-- 状态提示 -->
+    <div id="statusCard" class="status-card warning hidden">
+      <span id="statusIcon" class="status-icon">⚠️</span>
+      <div class="status-content">
+        <div id="statusTitle" class="status-title">状态</div>
+        <div id="statusMessage" class="status-message">消息</div>
+      </div>
+    </div>
+
+    <!-- 未登录状态 -->
+    <div id="loginGuide" class="login-guide hidden">
+      <div class="login-guide-icon">🔐</div>
+      <div class="login-guide-title">需要先登录</div>
+      <div class="login-guide-text">
+        访问 InfoDigest 网页版并登录<br>
+        扩展会自动同步登录状态
+      </div>
+      <button id="openWebBtn" class="btn btn-primary">打开 InfoDigest</button>
+    </div>
+
+    <!-- 文章预览 -->
+    <div id="articlePreview" class="article-preview hidden">
+      <div class="article-meta">
+        <span id="articleAuthor">作者</span>
+      </div>
+      <div id="articleTitle" class="article-title">文章标题</div>
+    </div>
+
+    <!-- 保存按钮 -->
+    <button id="saveBtn" class="btn btn-primary hidden">
+      <span id="saveBtnText">💾 保存到 InfoDigest</span>
+    </button>
+
+    <div class="footer">
+      <span class="footer-text">InfoDigest · 知识收藏助手</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
