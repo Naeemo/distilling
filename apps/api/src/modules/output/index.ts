@@ -7,3 +7,6 @@ export * from './content-aggregator.module';
 export * from './difficulty-adaptor.types';
 export * from './difficulty-adaptor.service';
 export * from './difficulty-adaptor.module';
+export * from './smart-summary.types';
+export * from './smart-summary.service';
+export * from './smart-summary.module';
