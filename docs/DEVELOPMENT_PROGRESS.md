@@ -157,3 +157,33 @@ Chrome 扩展:   █████████████████░░░  9
 - [移动端工作流](./MOBILE_WORKFLOW.md)
 - [we-mp-rss 调研](./WECHAT_SERVICE.md)
 - [GCP 部署指南](./GCP_DEPLOYMENT.md)
+- [知识图谱设计](./KNOWLEDGE_GRAPH.md)
+
+---
+
+## 🆕 新增功能
+
+### 知识图谱与文章关联分析
+**状态**: ✅ 后端完成，待前端可视化
+
+**核心功能**:
+- 内容洞察分析 (主题、实体、情感、立场)
+- 文章关联关系 (相似、对立、支持、引用等11种类型)
+- 信息位置计算 - 回答"它在信息世界里处于什么位置"
+- 自动关联发现
+- 知识图谱API (力导向图数据)
+
+**API端点**:
+- `POST/GET /knowledge-graph/contents/:id/insight`
+- `POST /knowledge-graph/relations`
+- `GET /knowledge-graph/contents/:id/relations`
+- `GET /knowledge-graph/contents/:id/position`
+- `GET /knowledge-graph/graph`
+- `GET /knowledge-graph/contents/:id/discover`
+
+**文档**: [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md)
+
+**待开发**:
+- [ ] 前端知识图谱可视化组件
+- [ ] 信息位置展示卡片
+- [ ] 关联文章推荐组件

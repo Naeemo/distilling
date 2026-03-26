@@ -26,6 +26,9 @@ model User {
   highlights Highlight[]
   tags       Tag[]
   reviews    Review[]
+  insights   ContentInsight[]
+  relations  ContentRelation[]
+  clusters   TopicCluster[]
 
   @@index([email])
   @@index([apiToken])
@@ -72,6 +75,10 @@ model Content {
   tags       ContentTag[]
   summaries  Summary[]
   reviews    Review[]
+  insights   ContentInsight?
+  relationsA ContentRelation[] @relation("ContentA")
+  relationsB ContentRelation[] @relation("ContentB")
+  clusters   ClusterContent[]
 
   @@index([userId])
   @@index([status])
@@ -192,4 +199,139 @@ enum Rating {
   HARD // 困难，间隔小幅增加
   GOOD // 正常，间隔标准增加
   EASY // 简单，间隔大幅增加
+}
+
+// ==================== 内容洞察模块 (知识图谱) ====================
+model ContentInsight {
+  id          String   @id @default(cuid())
+  contentId   String   @unique
+  userId      String
+  
+  // 主题分析
+  topics      Json?    // [{name: "AI", confidence: 0.92}, ...]
+  keyEntities Json?    // [{name: "OpenAI", type: "ORG", mentions: 5}, ...]
+  sentiments  Json?    // {overall: "positive", score: 0.7}
+  
+  // 观点立场
+  stance      String?  // "supportive", "critical", "neutral", "exploratory"
+  keyClaims   Json?    // ["claim1", "claim2", ...]
+  
+  // 信息位置
+  infoPosition Json?   // {domain: "tech", level: "deep", audience: "professional"}
+  
+  // 时间脉络
+  temporalContext Json? // {eventTime: "2024-01", referenceType: "current_event"}
+  
+  // 质量与可信度
+  qualityScore    Float?   // 0-1 综合质量评分
+  credibilityScore Float?  // 0-1 可信度评分
+  
+  // 向量嵌入 (用于相似度计算)
+  embedding Unsupported("vector(1536)")?   // pgvector 扩展
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([contentId])
+  @@map("content_insights")
+}
+
+// ==================== 内容关联模块 (知识图谱关系) ====================
+model ContentRelation {
+  id          String           @id @default(cuid())
+  contentAId  String           // 源文章
+  contentBId  String           // 目标文章
+  userId      String
+  
+  relationType RelationType
+  strength     Float           // 关联强度 0-1
+  
+  // 关联详情
+  description  String?         // 关联描述："两篇文章都讨论了..."
+  evidence     Json?           // 关联证据：["共同关键词: AI", "相似实体: OpenAI"]
+  
+  // 方向性 (有些关系是有方向的)
+  isDirectional Boolean @default(false)
+  directionFrom String?         // 如果是有方向的，从哪篇文章指向哪篇
+  
+  // 元数据
+  aiGenerated  Boolean  @default(true)
+  userConfirmed Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contentA Content @relation("ContentA", fields: [contentAId], references: [id], onDelete: Cascade)
+  contentB Content @relation("ContentB", fields: [contentBId], references: [id], onDelete: Cascade)
+  user     User    @relation(fields: [userId], references: [id])
+
+  @@unique([contentAId, contentBId, relationType])
+  @@index([userId])
+  @@index([contentAId])
+  @@index([contentBId])
+  @@index([relationType])
+  @@map("content_relations")
+}
+
+enum RelationType {
+  SIMILAR_TOPIC      // 主题相似
+  CONTRADICTORY      // 观点冲突/对立
+  SUPPORTIVE         // 观点支持/补充
+  REFERENCED         // 引用关系 (A引用B)
+  SEQUEL             // 续作/后续报道
+  SAME_AUTHOR        // 同一作者
+  SHARED_ENTITY      // 共享实体 (人物/组织/事件)
+  TEMPORAL_CHAIN     // 时间线关联
+  CAUSAL             // 因果关系
+  BROADER_CONTEXT    // 更广泛的上下文
+  NARROWER_FOCUS     // 更聚焦的角度
+}
+
+// ==================== 主题聚类模块 ====================
+model TopicCluster {
+  id          String   @id @default(cuid())
+  userId      String
+  
+  name        String   // 聚类名称 (AI生成或用户定义)
+  description String?  // 描述
+  keywords    Json?    // 关键词
+  
+  // 统计
+  contentCount Int    @default(0)
+  avgQuality   Float? // 平均质量
+  
+  // 可视化
+  color       String   @default("#3b82f6")
+  positionX   Float?   // 图谱中的位置
+  positionY   Float?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id])
+  contents ClusterContent[]
+
+  @@index([userId])
+  @@map("topic_clusters")
+}
+
+model ClusterContent {
+  clusterId String
+  contentId String
+  
+  // 该文章在此聚类中的权重
+  relevanceScore Float @default(0.5)
+  
+  assignedAt DateTime @default(now())
+
+  cluster TopicCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  content Content      @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@id([clusterId, contentId])
+  @@index([contentId])
+  @@map("cluster_contents")
 }
