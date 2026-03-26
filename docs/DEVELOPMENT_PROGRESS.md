@@ -164,20 +164,21 @@ Chrome 扩展:   █████████████████░░░  9
 ## 🆕 新增功能
 
 ### 知识图谱与文章关联分析
-**状态**: ✅ 后端完成，待前端可视化
+**状态**: ✅ 已完成 (后端100%, 前端待可视化)
 
 **核心功能**:
-- 内容洞察分析 (主题、实体、情感、立场)
-- 文章关联关系 (相似、对立、支持、引用等11种类型)
-- 信息位置计算 - 回答"它在信息世界里处于什么位置"
-- 自动关联发现
-- 知识图谱API (力导向图数据)
+- [x] 内容洞察分析 (主题、实体、情感、立场)
+- [x] 文章关联关系 (相似、对立、支持、引用等11种类型)
+- [x] 信息位置计算 - 回答"它在信息世界里处于什么位置"
+- [x] 自动关联发现
+- [x] 知识图谱API (力导向图数据)
+- [x] 数据库迁移
 
 **API端点**:
 - `POST/GET /knowledge-graph/contents/:id/insight`
 - `POST /knowledge-graph/relations`
 - `GET /knowledge-graph/contents/:id/relations`
-- `GET /knowledge-graph/contents/:id/position`
+- `GET /knowledge-graph/contents/:id/position` ⭐ 核心功能
 - `GET /knowledge-graph/graph`
 - `GET /knowledge-graph/contents/:id/discover`
 
