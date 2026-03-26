@@ -4,3 +4,6 @@ export * from './user-profile.module';
 export * from './content-aggregator.types';
 export * from './content-aggregator.service';
 export * from './content-aggregator.module';
+export * from './difficulty-adaptor.types';
+export * from './difficulty-adaptor.service';
+export * from './difficulty-adaptor.module';
