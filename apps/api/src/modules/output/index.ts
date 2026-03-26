@@ -13,3 +13,6 @@ export * from './smart-summary.module';
 export * from './knowledge-card.types';
 export * from './knowledge-card.service';
 export * from './knowledge-card.module';
+export * from './insight-report.types';
+export * from './insight-report.service';
+export * from './insight-report.module';
