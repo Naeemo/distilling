@@ -6,3 +6,4 @@ infodigest:output:insight-report
 infodigest:output:interactive-explorer
 infodigest:output:adaptive-layout
 infodigest:output:progressive-ui
+infodigest:output:visualization-lib
