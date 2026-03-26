@@ -1,1 +1,1 @@
-sentry:接入Sentry错误监控 - 配置sourcemap，捕获关键异常
+infodigest:sentry:接入Sentry错误监控 - 配置sourcemap上传，捕获关键异常，支持性能分析

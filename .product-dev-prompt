@@ -19,7 +19,7 @@
 - 已git push
 
 【当前任务】
-sentry:接入Sentry错误监控 - 配置sourcemap，捕获关键异常
+alert:实现告警系统 - Webhook/邮件通知，告警规则配置
 
 【技术栈】NestJS / Next.js / PostgreSQL / Prisma
 【目录】/root/.openclaw/workspace/distilling-project
