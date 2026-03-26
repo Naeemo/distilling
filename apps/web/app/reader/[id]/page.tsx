@@ -7,6 +7,7 @@ import { Card, CardBody } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { useContentStore } from '@/stores/content';
 import { formatDate, truncate } from '@/lib/utils';
+import { ContentPositionCard, RelatedContentList } from '@/components/knowledge-graph';
 import type { Highlight, Summary } from '@/types';
 
 type ViewMode = 'summary' | 'full';
@@ -438,6 +439,24 @@ export default function ReaderPage() {
               </CardBody>
             </Card>
           )}
+        </div>
+
+        {/* Knowledge Graph Section */}
+        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            信息位置与关联
+          </h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Content Position Card */}
+            <ContentPositionCard contentId={contentId} />
+            
+            {/* Related Content List */}
+            <RelatedContentList contentId={contentId} />
+          </div>
         </div>
       </article>
 

@@ -38,6 +38,14 @@ async function fetchWithAuth(url: string, config: RequestConfig = {}) {
   return response.json();
 }
 
+// 导出兼容 axios 风格的 apiClient
+export const apiClient = {
+  get: (url: string) => fetchWithAuth(url, { method: 'GET' }),
+  post: (url: string, data?: any) => fetchWithAuth(url, { method: 'POST', body: JSON.stringify(data) }),
+  patch: (url: string, data?: any) => fetchWithAuth(url, { method: 'PATCH', body: JSON.stringify(data) }),
+  delete: (url: string) => fetchWithAuth(url, { method: 'DELETE' }),
+};
+
 // API 方法
 export const api = {
   // 认证
