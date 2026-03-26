@@ -1,0 +1,15 @@
+{"modules":[
+  "apps/api/src/modules",
+  "apps/api/src/modules/ai",
+  "apps/api/src/modules/analysis",
+  "apps/api/src/modules/auth",
+  "apps/api/src/modules/browser",
+  "apps/api/src/modules/content",
+  "apps/api/src/modules/highlight",
+  "apps/api/src/modules/knowledge-graph",
+  "apps/api/src/modules/output",
+  "apps/api/src/modules/review",
+  "apps/api/src/modules/sentry",
+  "apps/api/src/modules/tag",
+  "apps/api/src/modules/user"
+],"completed_tasks":0,"total_commits":37,"last_check":"2026-03-26T16:20:02+08:00"}

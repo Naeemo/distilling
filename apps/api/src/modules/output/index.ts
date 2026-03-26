@@ -10,3 +10,6 @@ export * from './difficulty-adaptor.module';
 export * from './smart-summary.types';
 export * from './smart-summary.service';
 export * from './smart-summary.module';
+export * from './knowledge-card.types';
+export * from './knowledge-card.service';
+export * from './knowledge-card.module';
