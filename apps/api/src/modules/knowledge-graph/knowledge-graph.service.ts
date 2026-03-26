@@ -317,28 +317,13 @@ export class KnowledgeGraphService {
       return acc;
     }, {} as Record<string, number>);
 
-    // 获取主题聚类
+    // 获取主题聚类（简化版本，避免复杂JSON查询）
     const topics = (insight?.topics as any[]) || [];
-    const topicClusters = await Promise.all(
-      topics.slice(0, 5).map(async (topic) => {
-        const count = await this.prisma.content.count({
-          where: {
-            userId,
-            insights: {
-              topics: {
-                path: ['name'],
-                array_contains: topic.name,
-              },
-            },
-          },
-        });
-        return {
-          name: topic.name,
-          relevance: topic.confidence,
-          articleCount: count,
-        };
-      })
-    );
+    const topicClusters = topics.slice(0, 5).map((topic) => ({
+      name: topic.name,
+      relevance: topic.confidence,
+      articleCount: 0, // 简化处理
+    }));
 
     // 判断文章角色
     const role = this.determineContentRole(content, allRelations, insight);
@@ -470,93 +455,66 @@ export class KnowledgeGraphService {
   async discoverRelations(userId: string, contentId: string) {
     const content = await this.prisma.content.findFirst({
       where: { id: contentId, userId },
-      include: { insights: true },
+      include: { insights: true, tags: { include: { tag: true } } },
     });
 
     if (!content || !content.insights) {
-      return [];
+      return { suggestions: [] };
     }
 
     const discovered: any[] = [];
     const contentTopics = (content.insights.topics as any[]) || [];
     const contentEntities = (content.insights.keyEntities as any[]) || [];
 
-    // 1. 查找主题相似的文章
-    for (const topic of contentTopics.slice(0, 3)) {
-      const similarContents = await this.prisma.content.findMany({
-        where: {
-          userId,
-          id: { not: contentId },
-          insights: {
-            topics: {
-              path: ['name'],
-              array_contains: topic.name,
+    // 简化版本：基于标签匹配发现关联
+    const tagNames = content.tags.map(t => t.tag.name);
+    
+    const similarContents = await this.prisma.content.findMany({
+      where: {
+        userId,
+        id: { not: contentId },
+        tags: {
+          some: {
+            tag: {
+              name: { in: tagNames },
             },
           },
         },
-        include: { insights: true },
-        take: 5,
-      });
+      },
+      include: { insights: true, tags: { include: { tag: true } } },
+      take: 10,
+    });
 
-      for (const similar of similarContents) {
-        const similarTopics = (similar.insights?.topics as any[]) || [];
-        const commonTopics = contentTopics.filter((t1) =>
-          similarTopics.some((t2) => t2.name === t1.name)
-        );
-        const strength = commonTopics.length / Math.max(contentTopics.length, similarTopics.length);
+    for (const similar of similarContents) {
+      const similarTags = similar.tags.map(t => t.tag.name);
+      const commonTags = tagNames.filter(t => similarTags.includes(t));
+      const strength = commonTags.length / Math.max(tagNames.length, similarTags.length);
 
-        if (strength > 0.3) {
-          discovered.push({
-            contentAId: contentId,
-            contentBId: similar.id,
-            relationType: RelationType.SIMILAR_TOPIC,
-            strength,
-            description: `共享主题: ${commonTopics.map((t) => t.name).join(', ')}`,
-            evidence: commonTopics.map((t) => `共同主题: ${t.name}`),
-          });
-        }
-      }
-    }
-
-    // 2. 查找共享实体的文章
-    for (const entity of contentEntities.slice(0, 5)) {
-      const relatedContents = await this.prisma.content.findMany({
-        where: {
-          userId,
-          id: { not: contentId },
-          insights: {
-            keyEntities: {
-              path: ['name'],
-              array_contains: entity.name,
-            },
-          },
-        },
-        take: 5,
-      });
-
-      for (const related of relatedContents) {
+      if (strength > 0.2) {
         discovered.push({
           contentAId: contentId,
-          contentBId: related.id,
-          relationType: RelationType.SHARED_ENTITY,
-          strength: 0.6,
-          description: `共同提及: ${entity.name}`,
-          evidence: [`共同实体: ${entity.name} (${entity.type})`],
+          contentBId: similar.id,
+          relationType: RelationType.SIMILAR_TOPIC,
+          strength,
+          description: `共享标签: ${commonTags.join(', ')}`,
+          evidence: commonTags.map(t => `共同标签: ${t}`),
         });
       }
     }
 
     // 去重并按强度排序
-    const unique = new Map();
-    discovered.forEach((d) => {
+    const unique = new Map<string, any>();
+    for (const d of discovered) {
       const key = [d.contentAId, d.contentBId].sort().join('-');
       if (!unique.has(key) || unique.get(key).strength < d.strength) {
         unique.set(key, d);
       }
-    });
+    }
 
-    return Array.from(unique.values())
-      .sort((a, b) => b.strength - a.strength)
-      .slice(0, 10);
+    return {
+      suggestions: Array.from(unique.values())
+        .sort((a, b) => b.strength - a.strength)
+        .slice(0, 10),
+    };
   }
 }

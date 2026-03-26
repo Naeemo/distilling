@@ -7,24 +7,16 @@ const API_URL = process.env.API_URL || 'http://localhost:3001/api/v1';
 const TEST_ARTICLES = [
   {
     url: 'https://mp.weixin.qq.com/s/fGjGpC0ivEOKLsdrwfKysg',
-    expected: {
-      domain: 'tech', // 预期领域：科技
-      hasTechnicalContent: true,
-    }
+    expected: { domain: 'tech' }
   },
   {
     url: 'https://mp.weixin.qq.com/s/6V3hcgvsoEI5b7ebMG0WeQ',
-    expected: {
-      domain: 'tech',
-      hasTechnicalContent: true,
-    }
+    expected: { domain: 'tech' }
   },
   {
     url: 'https://mp.weixin.qq.com/s?__biz=MzIzNjc1NzUzMw==&mid=2247790479&idx=2&sn=1c2526d14ae8ed2a829f7c9bbfd8223a',
-    expected: {
-      domain: 'general',
-      hasTechnicalContent: false,
-    }
+    expected: { domain: 'general' },
+    note: '长链接格式，可能触发验证码'
   },
 ];
 

@@ -3,18 +3,12 @@ import { ApiProperty } from '@nestjs/swagger';
 import { RelationType } from '@prisma/client';
 
 export class ContentInsightDto {
-  @ApiProperty({ description: '文章ID' })
-  @IsString()
-  contentId: string;
-
   @ApiProperty({ description: '主题标签', example: [{ name: 'AI', confidence: 0.92 }] })
   @IsOptional()
-  @IsObject()
   topics?: { name: string; confidence: number }[];
 
   @ApiProperty({ description: '关键实体', example: [{ name: 'OpenAI', type: 'ORG', mentions: 5 }] })
   @IsOptional()
-  @IsObject()
   keyEntities?: { name: string; type: string; mentions: number }[];
 
   @ApiProperty({ description: '情感分析', example: { overall: 'positive', score: 0.7 } })
