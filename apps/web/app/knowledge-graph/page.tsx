@@ -1,10 +1,12 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { KnowledgeGraph } from '@/components/knowledge-graph';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, Network, Lightbulb } from 'lucide-react';
+import { Brain, Network, Lightbulb, Compass } from 'lucide-react';
 
 export default function KnowledgeGraphPage() {
   return (
@@ -19,6 +21,12 @@ export default function KnowledgeGraphPage() {
             Visualize connections between your content and understand information context
           </p>
         </div>
+        <Link href="/knowledge-graph/explore">
+          <Button className="flex items-center gap-2">
+            <Compass className="w-4 h-4" />
+            互动探索
+          </Button>
+        </Link>
       </div>
 
       <Tabs defaultValue="graph" className="space-y-4">

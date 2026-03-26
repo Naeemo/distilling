@@ -22,6 +22,10 @@ interface Node {
   x?: number;
   y?: number;
   size?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
 interface Edge {
@@ -218,7 +222,7 @@ export function KnowledgeGraph({
             .attr('cx', (d.size || 15) + 8)
             .attr('cy', -((d.size || 15) - 5) + (i * 8))
             .attr('r', 3)
-            .attr('fill', d3.interpolateTurquoise(topic.confidence));
+            .attr('fill', d3.interpolateViridis(topic.confidence));
         });
       }
     });
@@ -275,7 +279,7 @@ export function KnowledgeGraph({
     return (
       <div className={`flex flex-col items-center justify-center gap-4 ${className}`} style={{ width, height }}>
         <p className="text-red-500">Failed to load knowledge graph</p>
-        <Button onClick={refetch} variant="outline" size="sm">
+        <Button onClick={() => refetch()} variant="outline" size="sm">
           <RefreshCw className="w-4 h-4 mr-2" />
           Retry
         </Button>
@@ -293,7 +297,7 @@ export function KnowledgeGraph({
         <Button
           variant="secondary"
           size="icon"
-          onClick={refetch}
+          onClick={() => refetch()}
           className="bg-background/80 backdrop-blur"
         >
           <RefreshCw className="w-4 h-4" />

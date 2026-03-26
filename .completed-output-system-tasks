@@ -2,3 +2,7 @@ infodigest:output:user-profile
 infodigest:output:difficulty-adaptor
 infodigest:output:smart-summary
 infodigest:output:knowledge-card
+infodigest:output:insight-report
+infodigest:output:interactive-explorer
+infodigest:output:adaptive-layout
+infodigest:output:progressive-ui

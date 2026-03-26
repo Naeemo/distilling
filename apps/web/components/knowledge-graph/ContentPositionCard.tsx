@@ -127,7 +127,7 @@ export function ContentPositionCard({ contentId, className }: ContentPositionCar
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label className="text-xs text-muted-foreground">Depth Level</label>
-            <Badge variant="secondary" size="sm">
+            <Badge variant="secondary" className="text-xs">
               {levelLabels[position.level] || position.level}
             </Badge>
           </div>
