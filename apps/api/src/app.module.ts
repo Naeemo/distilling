@@ -9,6 +9,7 @@ import { HighlightModule } from './modules/highlight/highlight.module';
 import { TagModule } from './modules/tag/tag.module';
 import { ReviewModule } from './modules/review/review.module';
 import { KnowledgeGraphModule } from './modules/knowledge-graph/knowledge-graph.module';
+import { SystemConfigModule } from './modules/system-config/system-config.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 
@@ -29,6 +30,7 @@ import { RedisModule } from './redis/redis.module';
     TagModule,
     ReviewModule,
     KnowledgeGraphModule,
+    SystemConfigModule,
   ],
 })
 export class AppModule {}

@@ -335,3 +335,18 @@ model ClusterContent {
   @@index([contentId])
   @@map("cluster_contents")
 }
+
+// ==================== 系统配置模块 ====================
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  isSecret    Boolean  @default(false) // 是否敏感信息（如API密钥）
+  category    String   @default("general") // general/llm/embedding等
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  // 最后修改的管理员ID
+
+  @@index([category])
+  @@map("system_configs")
+}
