@@ -2,54 +2,128 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { SystemConfigDto, UpdateSystemConfigDto, CreateSystemConfigDto, LLMConfigDto } from './dto';
 
-interface CacheEntry<T> {
+interface SWRCacheEntry<T> {
   data: T;
-  expiresAt: number;
+  updatedAt: number;
+  isRevalidating: boolean;
 }
 
 @Injectable()
 export class SystemConfigService {
-  // 内存缓存：配置项 -> 值
-  private valueCache = new Map<string, CacheEntry<string>>();
-  // LLM 配置整体缓存
-  private llmConfigCache: CacheEntry<LLMConfigDto> | null = null;
-  // 默认缓存 TTL：5分钟
-  private readonly DEFAULT_TTL = 5 * 60 * 1000;
+  // SWR 缓存：数据 + 元数据
+  private valueCache = new Map<string, SWRCacheEntry<string>>();
+  private llmConfigCache: SWRCacheEntry<LLMConfigDto> | null = null;
+  
+  // SWR 参数
+  private readonly STALE_TIME = 5 * 60 * 1000;      // 5分钟内视为新鲜，直接返回
+  private readonly MAX_STALE_TIME = 30 * 60 * 1000; // 30分钟后强制刷新
 
   constructor(private prisma: PrismaService) {}
 
-  // ==================== 缓存管理 ====================
+  // ==================== SWR 缓存核心 ====================
 
   /**
-   * 清除所有配置缓存（配置更新时调用）
+   * SWR 读取：先返回缓存，后台静默刷新
    */
-  clearCache(): void {
-    this.valueCache.clear();
-    this.llmConfigCache = null;
+  private async swrRead<T>(
+    cacheKey: string | null,
+    cacheStore: Map<string, SWRCacheEntry<T>> | null,
+    fetcher: () => Promise<T>,
+    options: { force?: boolean } = {}
+  ): Promise<T> {
+    const now = Date.now();
+    
+    // 获取当前缓存
+    let entry: SWRCacheEntry<T> | null = null;
+    if (cacheKey && cacheStore) {
+      entry = cacheStore.get(cacheKey) || null;
+    } else if (!cacheKey) {
+      entry = (this.llmConfigCache as SWRCacheEntry<T>) || null;
+    }
+
+    const isForceRefresh = options.force;
+    const isStale = entry ? (now - entry.updatedAt) > this.STALE_TIME : true;
+    const isExpired = entry ? (now - entry.updatedAt) > this.MAX_STALE_TIME : true;
+
+    // 1. 缓存不存在或已过期：必须等待新数据
+    if (!entry || isExpired || isForceRefresh) {
+      const data = await fetcher();
+      const newEntry = { data, updatedAt: now, isRevalidating: false };
+      
+      if (cacheKey && cacheStore) {
+        cacheStore.set(cacheKey, newEntry);
+      } else if (!cacheKey) {
+        this.llmConfigCache = newEntry as SWRCacheEntry<LLMConfigDto>;
+      }
+      
+      return data;
+    }
+
+    // 2. 缓存存在但可能已陈旧：返回缓存，后台刷新
+    if (isStale && !entry.isRevalidating) {
+      entry.isRevalidating = true;
+      // 后台静默刷新（不 await）
+      this.backgroundRevalidate(cacheKey, cacheStore, fetcher, entry);
+    }
+
+    // 立即返回当前缓存（可能是陈旧的，但可用）
+    return entry.data;
   }
 
   /**
-   * 清除指定 key 的缓存
+   * 后台静默刷新
    */
-  clearCacheKey(key: string): void {
-    this.valueCache.delete(key);
-    // LLM 相关配置变更时，清除整体缓存
-    if (key.startsWith('LLM_')) {
-      this.llmConfigCache = null;
+  private async backgroundRevalidate<T>(
+    cacheKey: string | null,
+    cacheStore: Map<string, SWRCacheEntry<T>> | null,
+    fetcher: () => Promise<T>,
+    currentEntry: SWRCacheEntry<T>
+  ): Promise<void> {
+    try {
+      const data = await fetcher();
+      const newEntry = { data, updatedAt: Date.now(), isRevalidating: false };
+      
+      if (cacheKey && cacheStore) {
+        cacheStore.set(cacheKey, newEntry);
+      } else if (!cacheKey) {
+        this.llmConfigCache = newEntry as SWRCacheEntry<LLMConfigDto>;
+      }
+    } catch (error) {
+      console.error('SWR background revalidate failed:', error);
+      currentEntry.isRevalidating = false;
     }
   }
 
-  private getCached<T>(cache: CacheEntry<T> | null): T | null {
-    if (!cache) return null;
-    if (Date.now() > cache.expiresAt) return null;
-    return cache.data;
+  /**
+   * 乐观更新：立即更新缓存
+   */
+  private optimisticUpdate<T>(
+    cacheKey: string | null,
+    cacheStore: Map<string, SWRCacheEntry<T>> | null,
+    data: T
+  ): void {
+    const entry = { data, updatedAt: Date.now(), isRevalidating: false };
+    
+    if (cacheKey && cacheStore) {
+      cacheStore.set(cacheKey, entry);
+    } else if (!cacheKey) {
+      this.llmConfigCache = entry as SWRCacheEntry<LLMConfigDto>;
+    }
   }
 
-  private setCache<T>(data: T, ttl = this.DEFAULT_TTL): CacheEntry<T> {
-    return {
-      data,
-      expiresAt: Date.now() + ttl,
-    };
+  /**
+   * 清除缓存（配置变更时调用）
+   */
+  clearCache(key?: string): void {
+    if (key) {
+      this.valueCache.delete(key);
+      if (key.startsWith('LLM_')) {
+        this.llmConfigCache = null;
+      }
+    } else {
+      this.valueCache.clear();
+      this.llmConfigCache = null;
+    }
   }
 
   // ==================== 通用配置操作 ====================
@@ -62,7 +136,6 @@ export class SystemConfigService {
 
     return configs.map(config => ({
       ...config,
-      // 敏感信息脱敏显示
       value: config.isSecret ? this.maskSecret(config.value) : config.value,
     }));
   }
@@ -80,28 +153,18 @@ export class SystemConfigService {
     };
   }
 
-  async getValue(key: string, useCache = true): Promise<string | null> {
-    // 先查缓存
-    if (useCache) {
-      const cached = this.valueCache.get(key);
-      if (cached && Date.now() <= cached.expiresAt) {
-        return cached.data;
-      }
-    }
-
-    // 缓存未命中或禁用缓存，查数据库
-    const config = await this.prisma.systemConfig.findUnique({
-      where: { key },
-    });
-
-    const value = config?.value || null;
-
-    // 写入缓存
-    if (value !== null) {
-      this.valueCache.set(key, this.setCache(value));
-    }
-
-    return value;
+  async getValue(key: string, options?: { force?: boolean }): Promise<string | null> {
+    return this.swrRead(
+      key,
+      this.valueCache,
+      async () => {
+        const config = await this.prisma.systemConfig.findUnique({
+          where: { key },
+        });
+        return config?.value || null;
+      },
+      options
+    );
   }
 
   async create(data: CreateSystemConfigDto, userId: string): Promise<SystemConfigDto> {
@@ -120,6 +183,9 @@ export class SystemConfigService {
       },
     });
 
+    // 乐观更新缓存
+    this.optimisticUpdate(data.key, this.valueCache, config.value);
+
     return config;
   }
 
@@ -132,8 +198,14 @@ export class SystemConfigService {
       },
     });
 
-    // 清除相关缓存
-    this.clearCacheKey(key);
+    // 乐观更新缓存
+    if (data.value !== undefined) {
+      this.optimisticUpdate(key, this.valueCache, data.value);
+    }
+    // LLM 配置变更时清除聚合缓存
+    if (key.startsWith('LLM_')) {
+      this.llmConfigCache = null;
+    }
 
     return config;
   }
@@ -144,47 +216,40 @@ export class SystemConfigService {
     });
 
     // 清除缓存
-    this.clearCacheKey(key);
+    this.clearCache(key);
   }
 
   // ==================== LLM 配置专用方法 ====================
 
-  async getLLMConfig(useCache = true): Promise<LLMConfigDto> {
-    // 先查缓存
-    if (useCache) {
-      const cached = this.getCached(this.llmConfigCache);
-      if (cached) {
-        return cached;
-      }
-    }
+  async getLLMConfig(options?: { force?: boolean }): Promise<LLMConfigDto> {
+    return this.swrRead(
+      null, // LLM 配置使用独立的 llmConfigCache
+      null,
+      async () => {
+        const [
+          provider,
+          baseURL,
+          apiKey,
+          defaultModel,
+          models,
+        ] = await Promise.all([
+          this.getValue('LLM_PROVIDER', { force: true }), // 强制刷新底层缓存
+          this.getValue('LLM_BASE_URL', { force: true }),
+          this.getValue('LLM_API_KEY', { force: true }),
+          this.getValue('LLM_DEFAULT_MODEL', { force: true }),
+          this.getValue('LLM_MODELS', { force: true }),
+        ]);
 
-    // 并行查询所有 LLM 配置项
-    const [
-      provider,
-      baseURL,
-      apiKey,
-      defaultModel,
-      models,
-    ] = await Promise.all([
-      this.getValue('LLM_PROVIDER', false), // 禁用内层缓存，我们自己管理整体缓存
-      this.getValue('LLM_BASE_URL', false),
-      this.getValue('LLM_API_KEY', false),
-      this.getValue('LLM_DEFAULT_MODEL', false),
-      this.getValue('LLM_MODELS', false),
-    ]);
-
-    const config: LLMConfigDto = {
-      provider: provider || 'stepfun',
-      baseURL: baseURL || 'https://api.stepfun.com/v1',
-      apiKey: apiKey || '',
-      defaultModel: defaultModel || 'step-3.5-flash',
-      models: models ? JSON.parse(models) : ['step-3.5-flash'],
-    };
-
-    // 写入缓存
-    this.llmConfigCache = this.setCache(config);
-
-    return config;
+        return {
+          provider: provider || 'stepfun',
+          baseURL: baseURL || 'https://api.stepfun.com/v1',
+          apiKey: apiKey || '',
+          defaultModel: defaultModel || 'step-3.5-flash',
+          models: models ? JSON.parse(models) : ['step-3.5-flash'],
+        };
+      },
+      options
+    );
   }
 
   async saveLLMConfig(config: LLMConfigDto, userId: string): Promise<void> {
@@ -196,6 +261,10 @@ export class SystemConfigService {
       { key: 'LLM_MODELS', value: JSON.stringify(config.models), isSecret: false },
     ];
 
+    // 乐观更新：先更新缓存
+    this.optimisticUpdate(null, null, config);
+
+    // 然后写入数据库
     for (const item of configs) {
       const existing = await this.prisma.systemConfig.findUnique({
         where: { key: item.key },
@@ -221,9 +290,6 @@ export class SystemConfigService {
         });
       }
     }
-
-    // 保存完成后清除缓存，使新配置立即生效
-    this.clearCache();
   }
 
   // ==================== 初始化默认配置 ====================

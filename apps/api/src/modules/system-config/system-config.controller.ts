@@ -58,17 +58,17 @@ export class SystemConfigController {
   // ==================== LLM 配置专用 API ====================
 
   @Get('llm/config')
-  async getLLMConfig(): Promise<LLMConfigDto> {
-    return this.configService.getLLMConfig();
+  async getLLMConfig(@Query('force') force?: string): Promise<LLMConfigDto> {
+    return this.configService.getLLMConfig({ force: force === 'true' });
   }
 
   @Post('llm/config')
   async saveLLMConfig(
     @Body() config: LLMConfigDto,
     @Request() req,
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ success: boolean; cached: boolean }> {
     await this.configService.saveLLMConfig(config, req.user.userId);
-    return { success: true };
+    return { success: true, cached: true };
   }
 
   // ==================== 初始化 API ====================
