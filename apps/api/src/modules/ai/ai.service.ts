@@ -22,6 +22,71 @@ export class AiService {
   ) {}
 
   /**
+   * 根据配置生成文本（Vertex AI 或自定义 OpenAI 兼容）
+   */
+  private async generateWithConfig(
+    prompt: string,
+    options: { model?: string; maxTokens?: number; temperature?: number }
+  ): Promise<{ text: string; usageMetadata?: { totalTokenCount?: number } }> {
+    const config = await this.systemConfig.getLLMConfig();
+
+    if (config.providerType === 'vertex-ai') {
+      // 使用 Vertex AI
+      return this.vertexAi.generateText(prompt, {
+        model: options.model || config.defaultModel,
+        maxTokens: options.maxTokens,
+        temperature: options.temperature,
+      });
+    } else {
+      // 使用自定义 OpenAI 兼容 API
+      return this.generateWithOpenAICompatible(prompt, config, options);
+    }
+  }
+
+  /**
+   * OpenAI 兼容 API 调用
+   */
+  private async generateWithOpenAICompatible(
+    prompt: string,
+    config: { baseURL: string; apiKey: string; defaultModel: string },
+    options: { model?: string; maxTokens?: number; temperature?: number }
+  ): Promise<{ text: string; usageMetadata?: { totalTokenCount?: number } }> {
+    const response = await fetch(`${config.baseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: options.model || config.defaultModel,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that summarizes content accurately and concisely.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: options.maxTokens,
+        temperature: options.temperature,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`LLM API error: ${error}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    const totalTokenCount = data.usage?.total_tokens || this.estimateTokens(prompt + text);
+
+    return {
+      text,
+      usageMetadata: { totalTokenCount },
+    };
+  }
+
+  /**
    * 获取默认模型
    */
   private async getDefaultModel(): Promise<string> {
@@ -79,7 +144,7 @@ export class AiService {
     let tokensUsed = 0;
 
     try {
-      const result = await this.vertexAi.generateText(prompt, {
+      const result = await this.generateWithConfig(prompt, {
         model,
         maxTokens,
         temperature: 0.3,
@@ -92,7 +157,7 @@ export class AiService {
         onChunk(summaryText);
       }
     } catch (error) {
-      console.error('Vertex AI error:', error);
+      console.error('LLM API error:', error);
       summaryText = this.fallbackSummarize(content.contentText || '', type);
       tokensUsed = 0;
     }

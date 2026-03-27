@@ -22,7 +22,8 @@ export class CreateSystemConfigDto {
 }
 
 export class LLMConfigDto {
-  provider: string; // openai, stepfun, etc.
+  providerType: 'vertex-ai' | 'custom'; // 内置 Vertex AI 或自定义
+  provider: string; // 显示名称
   baseURL: string;
   apiKey: string;
   defaultModel: string;

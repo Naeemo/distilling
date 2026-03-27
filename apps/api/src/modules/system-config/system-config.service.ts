@@ -223,29 +223,36 @@ export class SystemConfigService {
 
   async getLLMConfig(options?: { force?: boolean }): Promise<LLMConfigDto> {
     return this.swrRead(
-      null, // LLM 配置使用独立的 llmConfigCache
+      null,
       null,
       async () => {
         const [
+          providerType,
           provider,
           baseURL,
           apiKey,
           defaultModel,
           models,
         ] = await Promise.all([
-          this.getValue('LLM_PROVIDER', { force: true }), // 强制刷新底层缓存
+          this.getValue('LLM_PROVIDER_TYPE', { force: true }),
+          this.getValue('LLM_PROVIDER', { force: true }),
           this.getValue('LLM_BASE_URL', { force: true }),
           this.getValue('LLM_API_KEY', { force: true }),
           this.getValue('LLM_DEFAULT_MODEL', { force: true }),
           this.getValue('LLM_MODELS', { force: true }),
         ]);
 
+        const isVertexAI = providerType === 'vertex-ai';
+
         return {
-          provider: provider || 'stepfun',
-          baseURL: baseURL || 'https://api.stepfun.com/v1',
+          providerType: isVertexAI ? 'vertex-ai' : 'custom',
+          provider: provider || (isVertexAI ? 'vertex-ai' : 'custom'),
+          baseURL: baseURL || (isVertexAI ? '' : 'https://api.stepfun.com/v1'),
           apiKey: apiKey || '',
-          defaultModel: defaultModel || 'step-3.5-flash',
-          models: models ? JSON.parse(models) : ['step-3.5-flash'],
+          defaultModel: defaultModel || (isVertexAI ? 'gemini-2.0-flash' : 'step-3.5-flash'),
+          models: models ? JSON.parse(models) : (isVertexAI 
+            ? ['gemini-2.0-flash', 'gemini-2.0-pro', 'gemini-2.5-flash']
+            : ['step-3.5-flash', 'step-3.5-turbo', 'step-4']),
         };
       },
       options
@@ -254,6 +261,7 @@ export class SystemConfigService {
 
   async saveLLMConfig(config: LLMConfigDto, userId: string): Promise<void> {
     const configs = [
+      { key: 'LLM_PROVIDER_TYPE', value: config.providerType, isSecret: false },
       { key: 'LLM_PROVIDER', value: config.provider, isSecret: false },
       { key: 'LLM_BASE_URL', value: config.baseURL, isSecret: false },
       { key: 'LLM_API_KEY', value: config.apiKey, isSecret: true },
@@ -297,29 +305,36 @@ export class SystemConfigService {
   async initializeDefaults(): Promise<void> {
     const defaults = [
       {
-        key: 'LLM_PROVIDER',
-        value: 'stepfun',
+        key: 'LLM_PROVIDER_TYPE',
+        value: 'vertex-ai',
         category: 'llm',
         isSecret: false,
-        description: 'LLM 提供商 (openai, stepfun, etc.)',
+        description: 'LLM 提供商类型 (vertex-ai: Google Vertex AI, custom: OpenAI 兼容)',
+      },
+      {
+        key: 'LLM_PROVIDER',
+        value: 'vertex-ai',
+        category: 'llm',
+        isSecret: false,
+        description: 'LLM 提供商显示名称',
       },
       {
         key: 'LLM_BASE_URL',
-        value: 'https://api.stepfun.com/v1',
+        value: '',
         category: 'llm',
         isSecret: false,
-        description: 'API 基础 URL',
+        description: 'API 基础 URL (自定义 provider 时使用)',
       },
       {
         key: 'LLM_DEFAULT_MODEL',
-        value: 'step-3.5-flash',
+        value: 'gemini-2.0-flash',
         category: 'llm',
         isSecret: false,
         description: '默认使用的模型',
       },
       {
         key: 'LLM_MODELS',
-        value: JSON.stringify(['step-3.5-flash', 'step-3.5-turbo', 'step-4']),
+        value: JSON.stringify(['gemini-2.0-flash', 'gemini-2.0-pro', 'gemini-2.5-flash']),
         category: 'llm',
         isSecret: false,
         description: '可用模型列表 (JSON 数组)',
