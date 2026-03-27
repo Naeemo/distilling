@@ -1,0 +1,11 @@
+.git
+.gcloud
+.gcloud-*
+.pnpm-home
+.pnpm-store
+node_modules
+.next
+dist
+build
+out
+gha-creds-*.json

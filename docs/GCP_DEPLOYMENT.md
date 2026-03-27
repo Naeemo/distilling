@@ -86,7 +86,7 @@ gcloud secrets list
 
 ---
 
-## 第四步：配置 GitHub Secrets
+## 第四步：配置 GitHub Actions 权限
 
 ### 4.1 创建 GCP 服务账号
 
@@ -123,28 +123,47 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 
-# 创建并下载密钥文件
-gcloud iam service-accounts keys create key.json \
-  --iam-account=github-actions@${PROJECT_ID}.iam.gserviceaccount.com
-
-# 复制完整 JSON 内容，这就是 GCP_SA_KEY
-cat key.json
-
-# 复制完后删除本地文件
-rm key.json
 ```
 
-### 4.2 在 GitHub 添加 Secrets
+### 4.2 配置 GitHub OIDC / Workload Identity Federation
 
-访问：`https://github.com/你的用户名/distilling/settings/secrets/actions`
+推荐做法是不再给 GitHub 保存长期的 `GCP_SA_KEY`，而是使用 GitHub OIDC + GCP Workload Identity Federation。
 
-点击 **New repository secret**，添加以下 3 个：
+```bash
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+REPO="你的用户名/distilling"
 
-| Secret 名称 | 值 |
-|------------|-----|
-| `GCP_PROJECT_ID` | 你的 GCP 项目 ID（如 `infodigest-prod`） |
-| `GCP_REGION` | `asia-east1` |
-| `GCP_SA_KEY` | 上一步 `key.json` 的完整 JSON 内容 |
+gcloud iam workload-identity-pools create github-actions \
+  --project="${PROJECT_ID}" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+
+gcloud iam workload-identity-pools providers create-oidc distilling \
+  --project="${PROJECT_ID}" \
+  --location="global" \
+  --workload-identity-pool="github-actions" \
+  --display-name="Distilling GitHub" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.aud=assertion.aud,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner,attribute.ref=assertion.ref" \
+  --attribute-condition="assertion.repository == '${REPO}' && assertion.repository_owner == '你的用户名'"
+
+gcloud iam service-accounts add-iam-policy-binding \
+  github-actions@${PROJECT_ID}.iam.gserviceaccount.com \
+  --project="${PROJECT_ID}" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-actions/attribute.repository/${REPO}"
+```
+
+### 4.3 GitHub 仓库侧需要配置什么？
+
+如果你把 `PROJECT_ID`、`REGION`、`workload_identity_provider` 和 `service_account` 直接写进 workflow，那么 GitHub 仓库侧不需要再额外配置 `GCP_SA_KEY` 这类 Secret。
+
+只要：
+
+- 仓库启用了 GitHub Actions
+- workflow job 保留 `permissions: id-token: write`
+
+GitHub 就会在运行时自动签发 OIDC token 给 `google-github-actions/auth` 使用。
 
 ---
 
@@ -259,9 +278,10 @@ gcloud run services describe infodigest-api --region=asia-east1 \
 ```
 
 ### 2. GitHub Actions 失败
-- 检查 `GCP_SA_KEY` 是否正确（必须是完整的服务账号 JSON，不是 base64）
-- 确认 Secrets 名称拼写正确
-- 确认服务账号已授予 `roles/iam.serviceAccountUser`
+- 确认 workflow job 包含 `permissions: id-token: write`
+- 确认 Workload Identity Provider 允许仓库 `你的用户名/distilling`
+- 确认 `github-actions@${PROJECT_ID}.iam.gserviceaccount.com` 已授予 `roles/iam.workloadIdentityUser`
+- 确认服务账号本身已授予 `roles/run.admin`、`roles/iam.serviceAccountUser`、`roles/secretmanager.secretAccessor`、`roles/cloudsql.client`、`roles/storage.admin`
 
 ### 3. 部署成功但访问 403
 Cloud Run 默认需要认证，检查是否设置了 `--allow-unauthenticated`：
