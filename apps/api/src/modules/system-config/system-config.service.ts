@@ -2,9 +2,55 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { SystemConfigDto, UpdateSystemConfigDto, CreateSystemConfigDto, LLMConfigDto } from './dto';
 
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
 @Injectable()
 export class SystemConfigService {
+  // 内存缓存：配置项 -> 值
+  private valueCache = new Map<string, CacheEntry<string>>();
+  // LLM 配置整体缓存
+  private llmConfigCache: CacheEntry<LLMConfigDto> | null = null;
+  // 默认缓存 TTL：5分钟
+  private readonly DEFAULT_TTL = 5 * 60 * 1000;
+
   constructor(private prisma: PrismaService) {}
+
+  // ==================== 缓存管理 ====================
+
+  /**
+   * 清除所有配置缓存（配置更新时调用）
+   */
+  clearCache(): void {
+    this.valueCache.clear();
+    this.llmConfigCache = null;
+  }
+
+  /**
+   * 清除指定 key 的缓存
+   */
+  clearCacheKey(key: string): void {
+    this.valueCache.delete(key);
+    // LLM 相关配置变更时，清除整体缓存
+    if (key.startsWith('LLM_')) {
+      this.llmConfigCache = null;
+    }
+  }
+
+  private getCached<T>(cache: CacheEntry<T> | null): T | null {
+    if (!cache) return null;
+    if (Date.now() > cache.expiresAt) return null;
+    return cache.data;
+  }
+
+  private setCache<T>(data: T, ttl = this.DEFAULT_TTL): CacheEntry<T> {
+    return {
+      data,
+      expiresAt: Date.now() + ttl,
+    };
+  }
 
   // ==================== 通用配置操作 ====================
 
@@ -34,11 +80,28 @@ export class SystemConfigService {
     };
   }
 
-  async getValue(key: string): Promise<string | null> {
+  async getValue(key: string, useCache = true): Promise<string | null> {
+    // 先查缓存
+    if (useCache) {
+      const cached = this.valueCache.get(key);
+      if (cached && Date.now() <= cached.expiresAt) {
+        return cached.data;
+      }
+    }
+
+    // 缓存未命中或禁用缓存，查数据库
     const config = await this.prisma.systemConfig.findUnique({
       where: { key },
     });
-    return config?.value || null;
+
+    const value = config?.value || null;
+
+    // 写入缓存
+    if (value !== null) {
+      this.valueCache.set(key, this.setCache(value));
+    }
+
+    return value;
   }
 
   async create(data: CreateSystemConfigDto, userId: string): Promise<SystemConfigDto> {
@@ -69,6 +132,9 @@ export class SystemConfigService {
       },
     });
 
+    // 清除相关缓存
+    this.clearCacheKey(key);
+
     return config;
   }
 
@@ -76,11 +142,23 @@ export class SystemConfigService {
     await this.prisma.systemConfig.delete({
       where: { key },
     });
+
+    // 清除缓存
+    this.clearCacheKey(key);
   }
 
   // ==================== LLM 配置专用方法 ====================
 
-  async getLLMConfig(): Promise<LLMConfigDto> {
+  async getLLMConfig(useCache = true): Promise<LLMConfigDto> {
+    // 先查缓存
+    if (useCache) {
+      const cached = this.getCached(this.llmConfigCache);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    // 并行查询所有 LLM 配置项
     const [
       provider,
       baseURL,
@@ -88,20 +166,25 @@ export class SystemConfigService {
       defaultModel,
       models,
     ] = await Promise.all([
-      this.getValue('LLM_PROVIDER'),
-      this.getValue('LLM_BASE_URL'),
-      this.getValue('LLM_API_KEY'),
-      this.getValue('LLM_DEFAULT_MODEL'),
-      this.getValue('LLM_MODELS'),
+      this.getValue('LLM_PROVIDER', false), // 禁用内层缓存，我们自己管理整体缓存
+      this.getValue('LLM_BASE_URL', false),
+      this.getValue('LLM_API_KEY', false),
+      this.getValue('LLM_DEFAULT_MODEL', false),
+      this.getValue('LLM_MODELS', false),
     ]);
 
-    return {
+    const config: LLMConfigDto = {
       provider: provider || 'stepfun',
       baseURL: baseURL || 'https://api.stepfun.com/v1',
       apiKey: apiKey || '',
       defaultModel: defaultModel || 'step-3.5-flash',
       models: models ? JSON.parse(models) : ['step-3.5-flash'],
     };
+
+    // 写入缓存
+    this.llmConfigCache = this.setCache(config);
+
+    return config;
   }
 
   async saveLLMConfig(config: LLMConfigDto, userId: string): Promise<void> {
@@ -138,6 +221,9 @@ export class SystemConfigService {
         });
       }
     }
+
+    // 保存完成后清除缓存，使新配置立即生效
+    this.clearCache();
   }
 
   // ==================== 初始化默认配置 ====================

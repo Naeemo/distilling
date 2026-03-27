@@ -78,4 +78,12 @@ export class SystemConfigController {
     await this.configService.initializeDefaults();
     return { success: true, message: '默认配置已初始化' };
   }
+
+  // ==================== 缓存管理 API ====================
+
+  @Post('cache/clear')
+  async clearCache(): Promise<{ success: boolean; message: string }> {
+    this.configService.clearCache();
+    return { success: true, message: '配置缓存已清除' };
+  }
 }
