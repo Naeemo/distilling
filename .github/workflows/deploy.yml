@@ -8,6 +8,7 @@ on:
 env:
   PROJECT_ID: infodigest-prod
   REGION: asia-east1
+  ARTIFACT_REGISTRY_REPOSITORY: cloud-run
   SERVICE_NAME: infodigest-api
   FRONTEND_SERVICE: infodigest-web
   DB_INSTANCE_NAME: infodigest-db
@@ -47,7 +48,7 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
 
       - name: Configure Docker
-        run: gcloud auth configure-docker gcr.io,asia.gcr.io
+        run: gcloud auth configure-docker $REGION-docker.pkg.dev
 
       - name: Build metadata
         id: build-meta
@@ -60,7 +61,9 @@ jobs:
           IMAGE_TAG="${IMAGE_TAG//\//-}"
 
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
-          echo "api_image=asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "registry_host=$REGION-docker.pkg.dev" >> "$GITHUB_OUTPUT"
+          echo "api_image=$REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REGISTRY_REPOSITORY/$SERVICE_NAME:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "api_image_latest=$REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REGISTRY_REPOSITORY/$SERVICE_NAME:latest" >> "$GITHUB_OUTPUT"
           echo "db_connection_name=$PROJECT_ID:$REGION:$DB_INSTANCE_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Build API Image
@@ -68,13 +71,13 @@ jobs:
           docker build \
             -f apps/api/Dockerfile \
             -t ${{ steps.build-meta.outputs.api_image }} \
-            -t asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+            -t ${{ steps.build-meta.outputs.api_image_latest }} \
             .
 
       - name: Push API Image
         run: |
           docker push ${{ steps.build-meta.outputs.api_image }}
-          docker push asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest
+          docker push ${{ steps.build-meta.outputs.api_image_latest }}
 
       - name: Deploy API to Cloud Run
         run: |
@@ -178,7 +181,7 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
 
       - name: Configure Docker
-        run: gcloud auth configure-docker gcr.io,asia.gcr.io
+        run: gcloud auth configure-docker $REGION-docker.pkg.dev
 
       - name: Build metadata
         id: build-meta
@@ -191,7 +194,8 @@ jobs:
           IMAGE_TAG="${IMAGE_TAG//\//-}"
 
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
-          echo "frontend_image=asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=$REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REGISTRY_REPOSITORY/$FRONTEND_SERVICE:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "frontend_image_latest=$REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REGISTRY_REPOSITORY/$FRONTEND_SERVICE:latest" >> "$GITHUB_OUTPUT"
 
       - name: Build Frontend Image
         run: |
@@ -199,13 +203,13 @@ jobs:
             -f apps/web/Dockerfile \
             --build-arg NEXT_PUBLIC_API_URL=${{ needs.deploy-api.outputs.api_url }}/api/v1 \
             -t ${{ steps.build-meta.outputs.frontend_image }} \
-            -t asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest \
+            -t ${{ steps.build-meta.outputs.frontend_image_latest }} \
             .
 
       - name: Push Frontend Image
         run: |
           docker push ${{ steps.build-meta.outputs.frontend_image }}
-          docker push asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest
+          docker push ${{ steps.build-meta.outputs.frontend_image_latest }}
 
       - name: Deploy Frontend to Cloud Run
         run: |

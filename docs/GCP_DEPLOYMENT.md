@@ -112,10 +112,15 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/cloudsql.client"
 
-# 推送镜像到 gcr.io
+# 推送镜像到 Artifact Registry
+gcloud artifacts repositories create cloud-run \
+  --location=asia-east1 \
+  --repository-format=docker \
+  --description="Cloud Run deployment images"
+
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+  --role="roles/artifactregistry.writer"
 
 # 允许 Cloud Run 运行时调用 Vertex AI Gemini
 PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
@@ -123,6 +128,13 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 
+```
+
+GitHub Actions 部署镜像时，镜像地址使用：
+
+```text
+asia-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run/infodigest-api:<tag>
+asia-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run/infodigest-web:<tag>
 ```
 
 ### 4.2 配置 GitHub OIDC / Workload Identity Federation
