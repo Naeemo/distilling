@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SystemConfigService } from '../system-config/system-config.service';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -14,12 +15,34 @@ interface ChatOptions {
 
 @Injectable()
 export class StepfunService {
-  private apiKey: string;
-  private baseURL: string;
+  constructor(
+    private configService: ConfigService,
+    private systemConfig: SystemConfigService,
+  ) {}
 
-  constructor(private configService: ConfigService) {
-    this.apiKey = this.configService.get('OPENAI_API_KEY') || '';
-    this.baseURL = this.configService.get('OPENAI_BASE_URL') || 'https://api.stepfun.com/v1';
+  /**
+   * 获取 LLM 配置（支持运行时更新）
+   */
+  private async getLLMConfig(): Promise<{
+    apiKey: string;
+    baseURL: string;
+    defaultModel: string;
+  }> {
+    try {
+      const config = await this.systemConfig.getLLMConfig();
+      return {
+        apiKey: config.apiKey,
+        baseURL: config.baseURL,
+        defaultModel: config.defaultModel,
+      };
+    } catch {
+      // 数据库未配置时，回退到环境变量
+      return {
+        apiKey: this.configService.get('OPENAI_API_KEY') || '',
+        baseURL: this.configService.get('OPENAI_BASE_URL') || 'https://api.stepfun.com/v1',
+        defaultModel: 'step-3.5-flash',
+      };
+    }
   }
 
   /**
@@ -29,14 +52,15 @@ export class StepfunService {
     messages: ChatMessage[],
     options: ChatOptions = {}
   ): Promise<string> {
-    const { model = 'step-3.5-flash', temperature = 0.7, maxTokens = 2000 } = options;
+    const config = await this.getLLMConfig();
+    const { model = config.defaultModel, temperature = 0.7, maxTokens = 2000 } = options;
 
     try {
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
+      const response = await fetch(`${config.baseURL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify({
           model,
@@ -48,13 +72,13 @@ export class StepfunService {
 
       if (!response.ok) {
         const error = await response.text();
-        throw new Error(`Stepfun API error: ${error}`);
+        throw new Error(`LLM API error: ${error}`);
       }
 
       const data = await response.json();
       return data.choices?.[0]?.message?.content || '';
     } catch (error) {
-      console.error('Stepfun API 调用失败:', error);
+      console.error('LLM API 调用失败:', error);
       throw error;
     }
   }
@@ -66,13 +90,14 @@ export class StepfunService {
     messages: ChatMessage[],
     options: ChatOptions = {}
   ): AsyncGenerator<string> {
-    const { model = 'step-3.5-flash', temperature = 0.7, maxTokens = 2000 } = options;
+    const config = await this.getLLMConfig();
+    const { model = config.defaultModel, temperature = 0.7, maxTokens = 2000 } = options;
 
-    const response = await fetch(`${this.baseURL}/chat/completions`, {
+    const response = await fetch(`${config.baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
         model,
@@ -85,7 +110,7 @@ export class StepfunService {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Stepfun API error: ${error}`);
+      throw new Error(`LLM API error: ${error}`);
     }
 
     const reader = response.body?.getReader();

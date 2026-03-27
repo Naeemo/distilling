@@ -5,28 +5,55 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import Redis from 'ioredis';
 import { createHash } from 'crypto';
 
 @Injectable()
 export class AiService {
-  private readonly openai: any;
-
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private systemConfig: SystemConfigService,
     @Inject(REDIS_CLIENT) private redis: Redis,
-  ) {
-    // 动态导入 OpenAI
+  ) {}
+
+  /**
+   * 获取 OpenAI 客户端（支持运行时配置更新）
+   */
+  private async getOpenAIClient(): Promise<any> {
     try {
       const { OpenAI } = require('openai');
-      this.openai = new OpenAI({
-        apiKey: this.configService.get('OPENAI_API_KEY'),
-        baseURL: this.configService.get('OPENAI_BASE_URL'),
+      const config = await this.systemConfig.getLLMConfig();
+      
+      return new OpenAI({
+        apiKey: config.apiKey,
+        baseURL: config.baseURL,
       });
     } catch {
-      this.openai = null;
+      // 数据库未配置或加载失败，回退到环境变量
+      try {
+        const { OpenAI } = require('openai');
+        return new OpenAI({
+          apiKey: this.configService.get('OPENAI_API_KEY'),
+          baseURL: this.configService.get('OPENAI_BASE_URL'),
+        });
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  /**
+   * 获取默认模型
+   */
+  private async getDefaultModel(): Promise<string> {
+    try {
+      const config = await this.systemConfig.getLLMConfig();
+      return config.defaultModel;
+    } catch {
+      return this.configService.get('OPENAI_MODEL', 'gpt-3.5-turbo');
     }
   }
 
@@ -69,15 +96,17 @@ export class AiService {
 
     // 生成摘要
     const prompt = this.buildPrompt(content.contentText || '', type);
-    const model = this.configService.get('OPENAI_MODEL', 'gpt-3.5-turbo');
+    const model = await this.getDefaultModel();
     const maxTokens = type === 'QUICK' ? 200 : 500;
 
     let summaryText = '';
     let tokensUsed = 0;
 
-    if (this.openai) {
+    const openai = await this.getOpenAIClient();
+
+    if (openai) {
       try {
-        const stream = await this.openai.chat.completions.create({
+        const stream = await openai.chat.completions.create({
           model,
           messages: [
             {
