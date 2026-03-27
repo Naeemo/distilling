@@ -3,19 +3,92 @@ name: Deploy to Google Cloud Run
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: ${{ secrets.GCP_REGION || 'asia-east1' }}
   SERVICE_NAME: infodigest-api
   FRONTEND_SERVICE: infodigest-web
+  DB_INSTANCE_NAME: infodigest-db
+  MIGRATION_JOB_NAME: infodigest-migrate
 
 jobs:
-  # 构建并部署后端 API
   deploy-api:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      api_url: ${{ steps.api-meta.outputs.api_url }}
+      api_image: ${{ steps.build-meta.outputs.api_image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker gcr.io,asia.gcr.io
+
+      - name: Build metadata
+        id: build-meta
+        run: |
+          echo "api_image=asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "db_connection_name=$PROJECT_ID:$REGION:$DB_INSTANCE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build API Image
+        run: |
+          docker build \
+            -f apps/api/Dockerfile \
+            -t ${{ steps.build-meta.outputs.api_image }} \
+            -t asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+            .
+
+      - name: Push API Image
+        run: |
+          docker push ${{ steps.build-meta.outputs.api_image }}
+          docker push asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest
+
+      - name: Deploy API to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --image ${{ steps.build-meta.outputs.api_image }} \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --add-cloudsql-instances ${{ steps.build-meta.outputs.db_connection_name }} \
+            --set-secrets DATABASE_URL=database-url:latest \
+            --set-secrets REDIS_URL=redis-url:latest \
+            --set-secrets JWT_SECRET=jwt-secret:latest \
+            --set-env-vars GCP_PROJECT_ID=$PROJECT_ID \
+            --set-env-vars VERTEX_AI_LOCATION=global \
+            --set-env-vars VERTEX_AI_MODEL=gemini-2.0-flash \
+            --set-env-vars FRONTEND_URL=http://localhost \
+            --memory 1Gi \
+            --cpu 1 \
+            --concurrency 80 \
+            --max-instances 10 \
+            --min-instances 0
+
+      - name: Capture API URL
+        id: api-meta
+        run: |
+          API_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --format='value(status.url)')
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy-api
     permissions:
       contents: read
       id-token: write
@@ -37,45 +110,49 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker gcr.io,asia.gcr.io
 
-      # 构建后端 Docker 镜像
-      - name: Build API Image
+      - name: Build Frontend Image
         run: |
           docker build \
-            -f apps/api/Dockerfile \
-            -t asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
-            -t asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+            -f apps/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_URL=${{ needs.deploy-api.outputs.api_url }}/api/v1 \
+            -t asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$GITHUB_SHA \
+            -t asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest \
             .
 
-      - name: Push API Image
+      - name: Push Frontend Image
         run: |
-          docker push asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA
-          docker push asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:latest
+          docker push asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$GITHUB_SHA
+          docker push asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest
 
-      # 部署到 Cloud Run
-      - name: Deploy API to Cloud Run
+      - name: Deploy Frontend to Cloud Run
         run: |
-          gcloud run deploy $SERVICE_NAME \
-            --image asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
+          gcloud run deploy $FRONTEND_SERVICE \
+            --image asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$GITHUB_SHA \
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
-            --set-secrets DATABASE_URL=database-url:latest \
-            --set-secrets REDIS_URL=redis-url:latest \
-            --set-secrets OPENAI_API_KEY=stepfun-api-key:latest \
-            --set-secrets JWT_SECRET=jwt-secret:latest \
-            --set-env-vars OPENAI_BASE_URL=https://api.stepfun.com/v1 \
-            --set-env-vars OPENAI_MODEL=step-3.5-flash \
-            --set-env-vars FRONTEND_URL=https://${{ env.FRONTEND_SERVICE }}-$PROJECT_ID-$REGION.run.app \
             --memory 1Gi \
             --cpu 1 \
             --concurrency 80 \
             --max-instances 10 \
             --min-instances 0
 
-  # 构建并部署前端
-  deploy-frontend:
+      - name: Capture Frontend URL
+        id: frontend-meta
+        run: |
+          FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --region $REGION --format='value(status.url)')
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Update API CORS URL
+        run: |
+          gcloud run services update $SERVICE_NAME \
+            --region $REGION \
+            --update-env-vars FRONTEND_URL=${{ steps.frontend-meta.outputs.frontend_url }}
+
+  migrate-db:
     runs-on: ubuntu-latest
     needs: deploy-api
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       id-token: write
@@ -84,69 +161,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9.15.0
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build frontend
-        run: |
-          cd apps/web
-          echo "NEXT_PUBLIC_API_URL=https://${{ env.SERVICE_NAME }}-$PROJECT_ID-$REGION.run.app" >> .env.local
-          pnpm build
-
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Deploy Frontend to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
         with:
-          service: ${{ env.FRONTEND_SERVICE }}
-          region: ${{ env.REGION }}
-          source: apps/web
-          env_vars: |
-            NEXT_PUBLIC_API_URL=https://${{ env.SERVICE_NAME }}-$PROJECT_ID-$REGION.run.app
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-  # 数据库迁移（可选，谨慎使用）
-  migrate-db:
-    runs-on: ubuntu-latest
-    needs: deploy-api
-    if: github.ref == 'refs/heads/main'
-    environment: production  # 需要手动审批
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Google Auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
+      - name: Create or Update migration job
         run: |
-          cd apps/api
-          npm install prisma @prisma/client
+          DB_CONNECTION_NAME=$PROJECT_ID:$REGION:$DB_INSTANCE_NAME
 
-      - name: Run migrations
+          if gcloud run jobs describe $MIGRATION_JOB_NAME --region $REGION >/dev/null 2>&1; then
+            gcloud run jobs update $MIGRATION_JOB_NAME \
+              --image ${{ needs.deploy-api.outputs.api_image }} \
+              --region $REGION \
+              --add-cloudsql-instances $DB_CONNECTION_NAME \
+              --set-secrets DATABASE_URL=database-url:latest \
+              --command npx \
+              --args prisma,migrate,deploy
+          else
+            gcloud run jobs create $MIGRATION_JOB_NAME \
+              --image ${{ needs.deploy-api.outputs.api_image }} \
+              --region $REGION \
+              --add-cloudsql-instances $DB_CONNECTION_NAME \
+              --set-secrets DATABASE_URL=database-url:latest \
+              --command npx \
+              --args prisma,migrate,deploy
+          fi
+
+      - name: Execute migrations
         run: |
-          cd apps/api
-          npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          gcloud run jobs execute $MIGRATION_JOB_NAME --region $REGION --wait

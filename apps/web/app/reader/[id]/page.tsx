@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { useContentStore } from '@/stores/content';
 import { formatDate, truncate } from '@/lib/utils';
 import { ContentPositionCard, RelatedContentList } from '@/components/knowledge-graph';
-import type { Highlight, Summary } from '@/types';
+import type { Content, Highlight, Summary } from '@/types';
 
 type ViewMode = 'summary' | 'full';
 type SummaryType = 'QUICK' | 'DETAILED' | 'BULLET';
@@ -32,7 +32,7 @@ export default function ReaderPage() {
   
   const { selectedContent, setSelectedContent } = useContentStore();
   
-  const [content, setContent] = useState(selectedContent);
+  const [content, setContent] = useState<Content | null>(selectedContent);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('summary');
   const [summaryType, setSummaryType] = useState<SummaryType>('QUICK');
@@ -217,7 +217,7 @@ export default function ReaderPage() {
     }
   };
 
-  const updateStatus = async (status: string) => {
+  const updateStatus = async (status: Content['status']) => {
     try {
       await api.contents.updateStatus(contentId, status);
       setContent((prev) => prev ? { ...prev, status } : prev);
@@ -264,7 +264,7 @@ export default function ReaderPage() {
             </span>
             <select
               value={content.status}
-              onChange={(e) => updateStatus(e.target.value)}
+              onChange={(e) => updateStatus(e.target.value as Content['status'])}
               className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="UNREAD">未读</option>

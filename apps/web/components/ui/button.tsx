@@ -31,12 +31,13 @@ export function Button({
         variant === 'ghost' && 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800',
         variant === 'outline' && 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800',
         variant === 'danger' && 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+        variant === 'outline' && 'border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 focus:ring-gray-500',
         
         // 尺寸样式
         size === 'sm' && 'px-3 py-1.5 text-sm',
         size === 'md' && 'px-4 py-2 text-sm',
         size === 'lg' && 'px-6 py-3 text-base',
-        size === 'icon' && 'p-2',
+        size === 'icon' && 'h-9 w-9',
         
         className
       )}

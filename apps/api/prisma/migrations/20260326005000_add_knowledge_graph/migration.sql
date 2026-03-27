@@ -1,6 +1,8 @@
 -- CreateEnum
 CREATE TYPE "RelationType" AS ENUM ('SIMILAR_TOPIC', 'CONTRADICTORY', 'SUPPORTIVE', 'REFERENCED', 'SEQUEL', 'SAME_AUTHOR', 'SHARED_ENTITY', 'TEMPORAL_CHAIN', 'CAUSAL', 'BROADER_CONTEXT', 'NARROWER_FOCUS');
 
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS vector;
 -- CreateTable
 CREATE TABLE "content_insights" (
     "id" TEXT NOT NULL,
@@ -100,9 +102,6 @@ CREATE INDEX "topic_clusters_userId_idx" ON "topic_clusters"("userId");
 -- CreateIndex
 CREATE INDEX "cluster_contents_contentId_idx" ON "cluster_contents"("contentId");
 
--- CreateIndex (skip if exists, already created in previous migration)
--- CREATE UNIQUE INDEX "users_apiToken_key" ON "users"("apiToken");
--- CREATE INDEX "users_apiToken_idx" ON "users"("apiToken");
 
 -- AddForeignKey
 ALTER TABLE "content_insights" ADD CONSTRAINT "content_insights_contentId_fkey" FOREIGN KEY ("contentId") REFERENCES "contents"("id") ON DELETE CASCADE ON UPDATE CASCADE;

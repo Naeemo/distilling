@@ -53,12 +53,32 @@ export function CardContent({ children, className }: React.HTMLAttributes<HTMLDi
   );
 }
 
+export function CardTitle({ children, className }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h3 className={cn('text-base font-semibold text-gray-900', className)}>
+      {children}
+    </h3>
+  );
+}
+
+export function CardDescription({ children, className }: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p className={cn('mt-1 text-sm text-gray-500', className)}>
+      {children}
+    </p>
+  );
+}
+
 export function CardBody({ children, className }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn('p-4', className)}>
       {children}
     </div>
   );
+}
+
+export function CardContent({ children, className }: React.HTMLAttributes<HTMLDivElement>) {
+  return <CardBody className={className}>{children}</CardBody>;
 }
 
 export function CardFooter({ children, className }: React.HTMLAttributes<HTMLDivElement>) {

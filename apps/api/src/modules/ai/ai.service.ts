@@ -9,41 +9,17 @@ import { SystemConfigService } from '../system-config/system-config.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import Redis from 'ioredis';
 import { createHash } from 'crypto';
+import { VertexAiService } from './vertex-ai.service';
 
 @Injectable()
 export class AiService {
   constructor(
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
     private prisma: PrismaService,
     private systemConfig: SystemConfigService,
     @Inject(REDIS_CLIENT) private redis: Redis,
+    private readonly vertexAi: VertexAiService,
   ) {}
-
-  /**
-   * 获取 OpenAI 客户端（支持运行时配置更新）
-   */
-  private async getOpenAIClient(): Promise<any> {
-    try {
-      const { OpenAI } = require('openai');
-      const config = await this.systemConfig.getLLMConfig();
-      
-      return new OpenAI({
-        apiKey: config.apiKey,
-        baseURL: config.baseURL,
-      });
-    } catch {
-      // 数据库未配置或加载失败，回退到环境变量
-      try {
-        const { OpenAI } = require('openai');
-        return new OpenAI({
-          apiKey: this.configService.get('OPENAI_API_KEY'),
-          baseURL: this.configService.get('OPENAI_BASE_URL'),
-        });
-      } catch {
-        return null;
-      }
-    }
-  }
 
   /**
    * 获取默认模型
@@ -53,7 +29,7 @@ export class AiService {
       const config = await this.systemConfig.getLLMConfig();
       return config.defaultModel;
     } catch {
-      return this.configService.get('OPENAI_MODEL', 'gpt-3.5-turbo');
+      return this.configService.get('VERTEX_AI_MODEL', 'gemini-2.0-flash');
     }
   }
 
@@ -102,42 +78,21 @@ export class AiService {
     let summaryText = '';
     let tokensUsed = 0;
 
-    const openai = await this.getOpenAIClient();
+    try {
+      const result = await this.vertexAi.generateText(prompt, {
+        model,
+        maxTokens,
+        temperature: 0.3,
+      });
+      summaryText = result.text;
+      tokensUsed =
+        result.usageMetadata?.totalTokenCount || this.estimateTokens(prompt + summaryText);
 
-    if (openai) {
-      try {
-        const stream = await openai.chat.completions.create({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful assistant that summarizes content accurately and concisely.',
-            },
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: maxTokens,
-          stream: true,
-        });
-
-        for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          summaryText += content;
-          
-          if (onChunk) {
-            onChunk(content);
-          }
-        }
-
-        // 估算token使用量
-        tokensUsed = this.estimateTokens(prompt + summaryText);
-      } catch (error) {
-        console.error('OpenAI API error:', error);
-        // 使用备用方案
-        summaryText = this.fallbackSummarize(content.contentText || '', type);
-        tokensUsed = 0;
+      if (onChunk && summaryText) {
+        onChunk(summaryText);
       }
-    } else {
-      // 无OpenAI时的备用方案
+    } catch (error) {
+      console.error('Vertex AI error:', error);
       summaryText = this.fallbackSummarize(content.contentText || '', type);
       tokensUsed = 0;
     }

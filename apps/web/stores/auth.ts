@@ -4,6 +4,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 
+type ChromeRuntime = {
+  sendMessage?: (
+    extensionId: string,
+    message: unknown,
+    callback?: (response?: { success?: boolean; message?: string }) => void
+  ) => void;
+  lastError?: unknown;
+};
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -24,6 +33,11 @@ interface AuthState {
  */
 function syncTokenToExtension(token: string | null) {
   if (typeof window === 'undefined') return;
+
+  const extensionRuntime = (
+    globalThis as typeof globalThis & { chrome?: { runtime?: ChromeRuntime } }
+  ).chrome?.runtime;
+  if (!extensionRuntime?.sendMessage) return;
   
   // Chrome 扩展 ID（开发环境固定值，生产环境需要配置）
   const EXTENSION_ID = process.env.NEXT_PUBLIC_EXTENSION_ID || 
@@ -32,11 +46,11 @@ function syncTokenToExtension(token: string | null) {
   try {
     if (token) {
       // 发送 token 到扩展
-      chrome?.runtime?.sendMessage(EXTENSION_ID, {
+      extensionRuntime.sendMessage(EXTENSION_ID, {
         type: 'SET_TOKEN',
         token: token
-      }, (response: { success?: boolean; message?: string }) => {
-        if (chrome.runtime.lastError) {
+      }, (response?: { success?: boolean; message?: string }) => {
+        if (extensionRuntime.lastError) {
           // 扩展未安装或未启用，静默失败
           console.log('[InfoDigest] 扩展未安装或通信失败');
           return;
@@ -47,7 +61,7 @@ function syncTokenToExtension(token: string | null) {
       });
     } else {
       // 清除 token
-      chrome?.runtime?.sendMessage(EXTENSION_ID, {
+      extensionRuntime.sendMessage(EXTENSION_ID, {
         type: 'CLEAR_TOKEN'
       }, () => {
         // 忽略错误
