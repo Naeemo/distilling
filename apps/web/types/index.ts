@@ -5,6 +5,7 @@ export interface User {
   email: string;
   name: string | null;
   avatar: string | null;
+  role: 'USER' | 'ADMIN';
   subscription: 'FREE' | 'PRO' | 'TEAM' | 'ENTERPRISE';
   createdAt: string;
 }
