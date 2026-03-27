@@ -13,6 +13,32 @@ export * from './smart-summary.module';
 export * from './knowledge-card.types';
 export * from './knowledge-card.service';
 export * from './knowledge-card.module';
-export * from './insight-report.types';
+export {
+  KeyFinding,
+  ActionRecommendation,
+  ExecutiveSummary,
+  ThemeAnalysis,
+  Timeline,
+  TimelineEvent as ReportTimelineEvent,
+  ComparisonDimension,
+  ComparisonAnalysis,
+  NetworkNode,
+  NetworkEdge,
+  KnowledgeNetwork,
+  FollowUpQuestion,
+  UnresolvedDebate,
+  TrendPrediction,
+  DeepDive,
+  ReportBody,
+  ReportMeta,
+  InsightReport,
+  ReportGenerationOptions,
+  ReportGenerationInput,
+  ReportPreview,
+  ReportQuality,
+  DEFAULT_REPORT_OPTIONS,
+  ReportTemplate,
+  TEMPLATE_CONFIGS,
+} from './insight-report.types';
 export * from './insight-report.service';
 export * from './insight-report.module';

@@ -27,7 +27,7 @@ export class AiService {
   private async generateWithConfig(
     prompt: string,
     options: { model?: string; maxTokens?: number; temperature?: number }
-  ): Promise<{ text: string; usageMetadata?: { totalTokenCount: number } }> {
+  ): Promise<{ text: string; usageMetadata?: { totalTokenCount?: number } }> {
     const config = await this.systemConfig.getLLMConfig();
 
     if (config.providerType === 'vertex-ai') {
@@ -50,7 +50,7 @@ export class AiService {
     prompt: string,
     config: { baseURL: string; apiKey: string; defaultModel: string },
     options: { model?: string; maxTokens?: number; temperature?: number }
-  ): Promise<{ text: string; usageMetadata?: { totalTokenCount: number } }> {
+  ): Promise<{ text: string; usageMetadata?: { totalTokenCount?: number } }> {
     const response = await fetch(`${config.baseURL}/chat/completions`, {
       method: 'POST',
       headers: {

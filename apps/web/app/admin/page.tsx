@@ -18,7 +18,7 @@ const DEFAULT_CUSTOM_MODELS = ['step-3.5-flash', 'step-3.5-turbo', 'gpt-4o'];
 
 export default function AdminConfigPage() {
   const router = useRouter();
-  const { user, token } = useAuthStore();
+  const { user, accessToken } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -33,24 +33,24 @@ export default function AdminConfigPage() {
 
   // 检查管理员权限
   useEffect(() => {
-    if (!token) {
+    if (!accessToken) {
       router.push('/login');
       return;
     }
     if (user && user.role !== 'ADMIN') {
       router.push('/dashboard');
     }
-  }, [user, token, router]);
+  }, [user, accessToken, router]);
 
   // 加载配置
   useEffect(() => {
-    if (!token) return;
+    if (!accessToken) return;
 
     const loadConfig = async () => {
       try {
         setLoading(true);
         const res = await fetch('/api/system-config/llm/config', {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
 
         if (res.ok) {
@@ -65,7 +65,7 @@ export default function AdminConfigPage() {
     };
 
     loadConfig();
-  }, [token]);
+  }, [accessToken]);
 
   // 切换 provider 类型
   const handleProviderTypeChange = (type: 'vertex-ai' | 'custom') => {
@@ -91,7 +91,7 @@ export default function AdminConfigPage() {
   };
 
   const handleSave = async () => {
-    if (!token) return;
+    if (!accessToken) return;
 
     try {
       setSaving(true);
@@ -101,7 +101,7 @@ export default function AdminConfigPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(config),
       });

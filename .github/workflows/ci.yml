@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    tags-ignore:
+      - '*'
+  pull_request:
+
+jobs:
+  build-api-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API Docker image
+        run: |
+          docker build \
+            -f apps/api/Dockerfile \
+            -t infodigest-api-ci:$GITHUB_SHA \
+            .
+
+  build-web-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Web Docker image
+        run: |
+          docker build \
+            -f apps/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_URL=https://example.com/api/v1 \
+            -t infodigest-web-ci:$GITHUB_SHA \
+            .

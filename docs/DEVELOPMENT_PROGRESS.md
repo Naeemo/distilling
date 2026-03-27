@@ -114,8 +114,8 @@
 
 **任务**:
 - [ ] 执行生产环境数据库迁移
-- [ ] 配置 GCP Secrets (Stepfun API Key)
-- [ ] 配置 GitHub Secrets (GCP_SA_KEY, PROJECT_ID)
+- [x] 配置 GCP Secrets
+- [x] 配置 GitHub Actions OIDC / Workload Identity Federation
 - [ ] 验证 Cloud Run 部署流程
 
 **预估工时**: 4-6 小时

@@ -86,7 +86,7 @@ gcloud secrets list
 
 ---
 
-## 第四步：配置 GitHub Secrets
+## 第四步：配置 GitHub Actions 权限
 
 ### 4.1 创建 GCP 服务账号
 
@@ -112,10 +112,15 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/cloudsql.client"
 
-# 推送镜像到 gcr.io
+# 推送镜像到 Artifact Registry
+gcloud artifacts repositories create cloud-run \
+  --location=asia-east1 \
+  --repository-format=docker \
+  --description="Cloud Run deployment images"
+
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+  --role="roles/artifactregistry.writer"
 
 # 允许 Cloud Run 运行时调用 Vertex AI Gemini
 PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
@@ -123,52 +128,98 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 
-# 创建并下载密钥文件
-gcloud iam service-accounts keys create key.json \
-  --iam-account=github-actions@${PROJECT_ID}.iam.gserviceaccount.com
-
-# 复制完整 JSON 内容，这就是 GCP_SA_KEY
-cat key.json
-
-# 复制完后删除本地文件
-rm key.json
 ```
 
-### 4.2 在 GitHub 添加 Secrets
+GitHub Actions 部署镜像时，镜像地址使用：
 
-访问：`https://github.com/你的用户名/distilling/settings/secrets/actions`
+```text
+asia-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run/infodigest-api:<tag>
+asia-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run/infodigest-web:<tag>
+```
 
-点击 **New repository secret**，添加以下 3 个：
+### 4.2 配置 GitHub OIDC / Workload Identity Federation
 
-| Secret 名称 | 值 |
-|------------|-----|
-| `GCP_PROJECT_ID` | 你的 GCP 项目 ID（如 `infodigest-prod`） |
-| `GCP_REGION` | `asia-east1` |
-| `GCP_SA_KEY` | 上一步 `key.json` 的完整 JSON 内容 |
+推荐做法是不再给 GitHub 保存长期的 `GCP_SA_KEY`，而是使用 GitHub OIDC + GCP Workload Identity Federation。
+
+```bash
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+REPO="你的用户名/distilling"
+
+gcloud iam workload-identity-pools create github-actions \
+  --project="${PROJECT_ID}" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+
+gcloud iam workload-identity-pools providers create-oidc distilling \
+  --project="${PROJECT_ID}" \
+  --location="global" \
+  --workload-identity-pool="github-actions" \
+  --display-name="Distilling GitHub" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.aud=assertion.aud,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner,attribute.ref=assertion.ref" \
+  --attribute-condition="assertion.repository == '${REPO}' && assertion.repository_owner == '你的用户名'"
+
+gcloud iam service-accounts add-iam-policy-binding \
+  github-actions@${PROJECT_ID}.iam.gserviceaccount.com \
+  --project="${PROJECT_ID}" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-actions/attribute.repository/${REPO}"
+```
+
+### 4.3 GitHub 仓库侧需要配置什么？
+
+如果你把 `PROJECT_ID`、`REGION`、`workload_identity_provider` 和 `service_account` 直接写进 workflow，那么 GitHub 仓库侧不需要再额外配置 `GCP_SA_KEY` 这类 Secret。
+
+只要：
+
+- 仓库启用了 GitHub Actions
+- workflow job 保留 `permissions: id-token: write`
+
+GitHub 就会在运行时自动签发 OIDC token 给 `google-github-actions/auth` 使用。
 
 ---
 
-## 第五步：部署！
+## 第五步：配置 GitHub Actions 触发方式
+
+仓库现在分成两条工作流：
+
+- `CI`：在日常 `push` / `pull_request` 时只做镜像构建校验，不会部署到 GCP
+- `Release Deploy to Google Cloud Run`：只有手动发布 GitHub Release，或手动 `workflow_dispatch` 时才会部署
+
+---
+
+## 第六步：部署！
 
 ```bash
 # 确保代码已提交
 git add .
 git commit -m "ready for deployment"
 
-# 推送到 main 分支触发自动部署
+# 推送代码只会触发 CI 构建
 git push origin main
 ```
 
-然后访问 GitHub → **Actions** 标签页查看部署进度。
+如果只是日常开发，到这里就结束了。GitHub Actions 会自动跑构建检查，但不会更新 Cloud Run。
+
+如果要正式部署生产环境：
+
+1. 打开 GitHub 仓库
+2. 进入 **Releases**
+3. 点击 **Draft a new release**
+4. 选择或创建部署用 tag
+5. 点击 **Publish release**
+
+发布 release 后，再到 GitHub → **Actions** 标签页查看 `Release Deploy to Google Cloud Run` 的执行进度。
 
 说明：
-- 当前工作流只会在 `main` 分支 push 或手动 `workflow_dispatch` 时部署，不会在 PR 上覆盖生产环境。
+- 当前生产部署只会在 `release.published` 或手动 `workflow_dispatch` 时执行，不会在普通 push 或 PR 上覆盖生产环境。
+- 日常 `push` / `pull_request` 只会运行 CI 构建，验证 API 和前端 Docker 镜像都能成功构建。
 - 工作流会自动完成 API 部署、前端部署、Cloud SQL 挂载，以及 `infodigest-migrate` 数据库迁移 Job 的创建与执行。
 - API 默认使用 Cloud Run 运行时身份直连 Google Cloud Vertex AI Gemini，不需要额外的第三方 LLM API Key。
 
 ---
 
-## 第六步：验证部署
+## 第七步：验证部署
 
 ### 查看部署状态
 ```bash
@@ -196,10 +247,8 @@ gcloud run jobs describe infodigest-migrate --region=asia-east1
 # 查看日志
 gcloud logging tail "resource.type=cloud_run_revision"
 
-# 重新部署（手动触发）
-gcloud run deploy infodigest-api \
-  --image asia.gcr.io/$(gcloud config get-value project)/infodigest-api:latest \
-  --region=asia-east1
+# 手动触发 GitHub Actions 部署
+# GitHub -> Actions -> Release Deploy to Google Cloud Run -> Run workflow
 
 # 更新环境变量
 gcloud run services update infodigest-api \
@@ -241,9 +290,10 @@ gcloud run services describe infodigest-api --region=asia-east1 \
 ```
 
 ### 2. GitHub Actions 失败
-- 检查 `GCP_SA_KEY` 是否正确（必须是完整的服务账号 JSON，不是 base64）
-- 确认 Secrets 名称拼写正确
-- 确认服务账号已授予 `roles/iam.serviceAccountUser`
+- 确认 workflow job 包含 `permissions: id-token: write`
+- 确认 Workload Identity Provider 允许仓库 `你的用户名/distilling`
+- 确认 `github-actions@${PROJECT_ID}.iam.gserviceaccount.com` 已授予 `roles/iam.workloadIdentityUser`
+- 确认服务账号本身已授予 `roles/run.admin`、`roles/iam.serviceAccountUser`、`roles/secretmanager.secretAccessor`、`roles/cloudsql.client`、`roles/storage.admin`
 
 ### 3. 部署成功但访问 403
 Cloud Run 默认需要认证，检查是否设置了 `--allow-unauthenticated`：
