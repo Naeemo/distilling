@@ -1,8 +1,8 @@
-name: Deploy to Google Cloud Run
+name: Release Deploy to Google Cloud Run
 
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
@@ -13,14 +13,19 @@ env:
   DB_INSTANCE_NAME: infodigest-db
   MIGRATION_JOB_NAME: infodigest-migrate
 
+concurrency:
+  group: release-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy-api:
     runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
     permissions:
       contents: read
       id-token: write
     outputs:
-      api_url: ${{ steps.api-meta.outputs.api_url }}
+      api_url: ${{ steps.deploy-meta.outputs.api_url }}
       api_image: ${{ steps.build-meta.outputs.api_image }}
 
     steps:
@@ -42,8 +47,16 @@ jobs:
 
       - name: Build metadata
         id: build-meta
+        shell: bash
         run: |
-          echo "api_image=asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          IMAGE_TAG="$GITHUB_SHA"
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            IMAGE_TAG="${{ github.event.release.tag_name }}"
+          fi
+          IMAGE_TAG="${IMAGE_TAG//\//-}"
+
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "api_image=asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
           echo "db_connection_name=$PROJECT_ID:$REGION:$DB_INSTANCE_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Build API Image
@@ -81,78 +94,15 @@ jobs:
             --min-instances 0
 
       - name: Capture API URL
-        id: api-meta
+        id: deploy-meta
         run: |
           API_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --format='value(status.url)')
           echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
 
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    needs: deploy-api
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Google Auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Configure Docker
-        run: gcloud auth configure-docker gcr.io,asia.gcr.io
-
-      - name: Build Frontend Image
-        run: |
-          docker build \
-            -f apps/web/Dockerfile \
-            --build-arg NEXT_PUBLIC_API_URL=${{ needs.deploy-api.outputs.api_url }}/api/v1 \
-            -t asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$GITHUB_SHA \
-            -t asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest \
-            .
-
-      - name: Push Frontend Image
-        run: |
-          docker push asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$GITHUB_SHA
-          docker push asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest
-
-      - name: Deploy Frontend to Cloud Run
-        run: |
-          gcloud run deploy $FRONTEND_SERVICE \
-            --image asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$GITHUB_SHA \
-            --region $REGION \
-            --platform managed \
-            --allow-unauthenticated \
-            --memory 1Gi \
-            --cpu 1 \
-            --concurrency 80 \
-            --max-instances 10 \
-            --min-instances 0
-
-      - name: Capture Frontend URL
-        id: frontend-meta
-        run: |
-          FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --region $REGION --format='value(status.url)')
-          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Update API CORS URL
-        run: |
-          gcloud run services update $SERVICE_NAME \
-            --region $REGION \
-            --update-env-vars FRONTEND_URL=${{ steps.frontend-meta.outputs.frontend_url }}
-
   migrate-db:
     runs-on: ubuntu-latest
     needs: deploy-api
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
     permissions:
       contents: read
       id-token: write
@@ -196,3 +146,80 @@ jobs:
       - name: Execute migrations
         run: |
           gcloud run jobs execute $MIGRATION_JOB_NAME --region $REGION --wait
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [deploy-api, migrate-db]
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker gcr.io,asia.gcr.io
+
+      - name: Build metadata
+        id: build-meta
+        shell: bash
+        run: |
+          IMAGE_TAG="$GITHUB_SHA"
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            IMAGE_TAG="${{ github.event.release.tag_name }}"
+          fi
+          IMAGE_TAG="${IMAGE_TAG//\//-}"
+
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build Frontend Image
+        run: |
+          docker build \
+            -f apps/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_URL=${{ needs.deploy-api.outputs.api_url }}/api/v1 \
+            -t ${{ steps.build-meta.outputs.frontend_image }} \
+            -t asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest \
+            .
+
+      - name: Push Frontend Image
+        run: |
+          docker push ${{ steps.build-meta.outputs.frontend_image }}
+          docker push asia.gcr.io/$PROJECT_ID/$FRONTEND_SERVICE:latest
+
+      - name: Deploy Frontend to Cloud Run
+        run: |
+          gcloud run deploy $FRONTEND_SERVICE \
+            --image ${{ steps.build-meta.outputs.frontend_image }} \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 1 \
+            --concurrency 80 \
+            --max-instances 10 \
+            --min-instances 0
+
+      - name: Capture Frontend URL
+        id: deploy-meta
+        run: |
+          FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --region $REGION --format='value(status.url)')
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Update API CORS URL
+        run: |
+          gcloud run services update $SERVICE_NAME \
+            --region $REGION \
+            --update-env-vars FRONTEND_URL=${{ steps.deploy-meta.outputs.frontend_url }}

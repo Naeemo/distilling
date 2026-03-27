@@ -148,27 +148,47 @@ rm key.json
 
 ---
 
-## 第五步：部署！
+## 第五步：配置 GitHub Actions 触发方式
+
+仓库现在分成两条工作流：
+
+- `CI`：在日常 `push` / `pull_request` 时只做镜像构建校验，不会部署到 GCP
+- `Release Deploy to Google Cloud Run`：只有手动发布 GitHub Release，或手动 `workflow_dispatch` 时才会部署
+
+---
+
+## 第六步：部署！
 
 ```bash
 # 确保代码已提交
 git add .
 git commit -m "ready for deployment"
 
-# 推送到 main 分支触发自动部署
+# 推送代码只会触发 CI 构建
 git push origin main
 ```
 
-然后访问 GitHub → **Actions** 标签页查看部署进度。
+如果只是日常开发，到这里就结束了。GitHub Actions 会自动跑构建检查，但不会更新 Cloud Run。
+
+如果要正式部署生产环境：
+
+1. 打开 GitHub 仓库
+2. 进入 **Releases**
+3. 点击 **Draft a new release**
+4. 选择或创建部署用 tag
+5. 点击 **Publish release**
+
+发布 release 后，再到 GitHub → **Actions** 标签页查看 `Release Deploy to Google Cloud Run` 的执行进度。
 
 说明：
-- 当前工作流只会在 `main` 分支 push 或手动 `workflow_dispatch` 时部署，不会在 PR 上覆盖生产环境。
+- 当前生产部署只会在 `release.published` 或手动 `workflow_dispatch` 时执行，不会在普通 push 或 PR 上覆盖生产环境。
+- 日常 `push` / `pull_request` 只会运行 CI 构建，验证 API 和前端 Docker 镜像都能成功构建。
 - 工作流会自动完成 API 部署、前端部署、Cloud SQL 挂载，以及 `infodigest-migrate` 数据库迁移 Job 的创建与执行。
 - API 默认使用 Cloud Run 运行时身份直连 Google Cloud Vertex AI Gemini，不需要额外的第三方 LLM API Key。
 
 ---
 
-## 第六步：验证部署
+## 第七步：验证部署
 
 ### 查看部署状态
 ```bash
@@ -196,10 +216,8 @@ gcloud run jobs describe infodigest-migrate --region=asia-east1
 # 查看日志
 gcloud logging tail "resource.type=cloud_run_revision"
 
-# 重新部署（手动触发）
-gcloud run deploy infodigest-api \
-  --image asia.gcr.io/$(gcloud config get-value project)/infodigest-api:latest \
-  --region=asia-east1
+# 手动触发 GitHub Actions 部署
+# GitHub -> Actions -> Release Deploy to Google Cloud Run -> Run workflow
 
 # 更新环境变量
 gcloud run services update infodigest-api \
