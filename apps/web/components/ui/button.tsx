@@ -3,8 +3,8 @@
 import { cn } from '@/lib/utils';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
 }
 
@@ -30,11 +30,13 @@ export function Button({
         variant === 'secondary' && 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
         variant === 'ghost' && 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
         variant === 'danger' && 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+        variant === 'outline' && 'border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 focus:ring-gray-500',
         
         // 尺寸样式
         size === 'sm' && 'px-3 py-1.5 text-sm',
         size === 'md' && 'px-4 py-2 text-sm',
         size === 'lg' && 'px-6 py-3 text-base',
+        size === 'icon' && 'h-9 w-9',
         
         className
       )}

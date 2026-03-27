@@ -27,7 +27,9 @@ gcloud config set project infodigest-prod
 
 # 4. 启用必要 API
 gcloud services enable run.googleapis.com \
+  containerregistry.googleapis.com \
   sqladmin.googleapis.com \
+  aiplatform.googleapis.com \
   secretmanager.googleapis.com \
   redis.googleapis.com
 ```
@@ -63,7 +65,7 @@ gcloud sql instances describe infodigest-db --format="value(connectionName)"
 ## 第三步：创建 GCP Secrets
 
 ```bash
-# 设置变量（替换 你的数据库密码）
+# 设置变量（替换为你自己的值）
 export DB_PASSWORD="你的数据库密码"
 export PROJECT_ID=$(gcloud config get-value project)
 export DB_CONNECTION_NAME="${PROJECT_ID}:asia-east1:infodigest-db"
@@ -72,14 +74,10 @@ export DB_CONNECTION_NAME="${PROJECT_ID}:asia-east1:infodigest-db"
 echo -n "postgresql://postgres:${DB_PASSWORD}@localhost/infodigest?host=/cloudsql/${DB_CONNECTION_NAME}" | \
   gcloud secrets create database-url --data-file=-
 
-# 2. StepFun API Key Secret（你的阶跃星辰 API Key）
-echo -n "2oR8HSbUc5NMl0pJdbp3Hn2bitwQafnPcOaWLL5R6x83qXjAhzHwyqlwrXmdbX2fD" | \
-  gcloud secrets create stepfun-api-key --data-file=-
-
-# 3. JWT Secret（随机生成）
+# 2. JWT Secret（随机生成）
 openssl rand -base64 32 | gcloud secrets create jwt-secret --data-file=-
 
-# 4. Redis URL（可选，先用本地模式）
+# 3. Redis URL（可选，先用本地模式）
 echo -n "redis://localhost:6379" | gcloud secrets create redis-url --data-file=-
 
 # 验证 Secrets 创建成功
@@ -104,20 +102,35 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
 
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/cloudsql.client"
 
+# 推送镜像到 gcr.io
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
+
+# 允许 Cloud Run 运行时调用 Vertex AI Gemini
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/aiplatform.user"
+
 # 创建并下载密钥文件
 gcloud iam service-accounts keys create key.json \
   --iam-account=github-actions@${PROJECT_ID}.iam.gserviceaccount.com
 
-# 生成 base64（复制输出，这就是 GCP_SA_KEY）
-cat key.json | base64 -w 0
+# 复制完整 JSON 内容，这就是 GCP_SA_KEY
+cat key.json
 
-# 清理临时文件
+# 复制完后删除本地文件
 rm key.json
 ```
 
@@ -131,7 +144,7 @@ rm key.json
 |------------|-----|
 | `GCP_PROJECT_ID` | 你的 GCP 项目 ID（如 `infodigest-prod`） |
 | `GCP_REGION` | `asia-east1` |
-| `GCP_SA_KEY` | 上一步复制的 base64 字符串 |
+| `GCP_SA_KEY` | 上一步 `key.json` 的完整 JSON 内容 |
 
 ---
 
@@ -148,6 +161,11 @@ git push origin main
 
 然后访问 GitHub → **Actions** 标签页查看部署进度。
 
+说明：
+- 当前工作流只会在 `main` 分支 push 或手动 `workflow_dispatch` 时部署，不会在 PR 上覆盖生产环境。
+- 工作流会自动完成 API 部署、前端部署、Cloud SQL 挂载，以及 `infodigest-migrate` 数据库迁移 Job 的创建与执行。
+- API 默认使用 Cloud Run 运行时身份直连 Google Cloud Vertex AI Gemini，不需要额外的第三方 LLM API Key。
+
 ---
 
 ## 第六步：验证部署
@@ -159,6 +177,9 @@ gcloud run services describe infodigest-api --region=asia-east1
 
 # 前端服务
 gcloud run services describe infodigest-web --region=asia-east1
+
+# 数据库迁移任务
+gcloud run jobs describe infodigest-migrate --region=asia-east1
 ```
 
 ### 访问应用
@@ -213,9 +234,16 @@ gcloud sql connect infodigest-db --user=postgres
 postgresql://postgres:密码@localhost/infodigest?host=/cloudsql/项目:地区:实例名
 ```
 
+同时确认 Cloud Run 已挂载 Cloud SQL：
+```bash
+gcloud run services describe infodigest-api --region=asia-east1 \
+  --format="value(spec.template.metadata.annotations.run.googleapis.com/cloudsql-instances)"
+```
+
 ### 2. GitHub Actions 失败
-- 检查 `GCP_SA_KEY` 是否正确（必须是 base64 编码）
+- 检查 `GCP_SA_KEY` 是否正确（必须是完整的服务账号 JSON，不是 base64）
 - 确认 Secrets 名称拼写正确
+- 确认服务账号已授予 `roles/iam.serviceAccountUser`
 
 ### 3. 部署成功但访问 403
 Cloud Run 默认需要认证，检查是否设置了 `--allow-unauthenticated`：

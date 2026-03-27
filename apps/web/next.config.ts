@@ -2,12 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  
-  // 启用实验性功能
-  experimental: {
-    // React Compiler 自动 memoization
-    reactCompiler: true,
-  },
+  output: 'standalone',
+  outputFileTracingRoot: `${process.cwd()}/../..`,
   
   // 图片优化配置
   images: {
@@ -21,6 +17,10 @@ const nextConfig: NextConfig = {
   
   // API 代理配置
   async rewrites() {
+    if (process.env.NODE_ENV === 'production') {
+      return [];
+    }
+
     return [
       {
         source: '/api/:path*',

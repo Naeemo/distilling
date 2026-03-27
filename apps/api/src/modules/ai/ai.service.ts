@@ -8,27 +8,16 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import Redis from 'ioredis';
 import { createHash } from 'crypto';
+import { VertexAiService } from './vertex-ai.service';
 
 @Injectable()
 export class AiService {
-  private readonly openai: any;
-
   constructor(
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
     private prisma: PrismaService,
     @Inject(REDIS_CLIENT) private redis: Redis,
-  ) {
-    // 动态导入 OpenAI
-    try {
-      const { OpenAI } = require('openai');
-      this.openai = new OpenAI({
-        apiKey: this.configService.get('OPENAI_API_KEY'),
-        baseURL: this.configService.get('OPENAI_BASE_URL'),
-      });
-    } catch {
-      this.openai = null;
-    }
-  }
+    private readonly vertexAi: VertexAiService,
+  ) {}
 
   async generateSummary(
     contentId: string,
@@ -69,46 +58,27 @@ export class AiService {
 
     // 生成摘要
     const prompt = this.buildPrompt(content.contentText || '', type);
-    const model = this.configService.get('OPENAI_MODEL', 'gpt-3.5-turbo');
+    const model = this.configService.get('VERTEX_AI_MODEL', 'gemini-2.0-flash');
     const maxTokens = type === 'QUICK' ? 200 : 500;
 
     let summaryText = '';
     let tokensUsed = 0;
 
-    if (this.openai) {
-      try {
-        const stream = await this.openai.chat.completions.create({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful assistant that summarizes content accurately and concisely.',
-            },
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: maxTokens,
-          stream: true,
-        });
+    try {
+      const result = await this.vertexAi.generateText(prompt, {
+        model,
+        maxTokens,
+        temperature: 0.3,
+      });
+      summaryText = result.text;
+      tokensUsed =
+        result.usageMetadata?.totalTokenCount || this.estimateTokens(prompt + summaryText);
 
-        for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          summaryText += content;
-          
-          if (onChunk) {
-            onChunk(content);
-          }
-        }
-
-        // 估算token使用量
-        tokensUsed = this.estimateTokens(prompt + summaryText);
-      } catch (error) {
-        console.error('OpenAI API error:', error);
-        // 使用备用方案
-        summaryText = this.fallbackSummarize(content.contentText || '', type);
-        tokensUsed = 0;
+      if (onChunk && summaryText) {
+        onChunk(summaryText);
       }
-    } else {
-      // 无OpenAI时的备用方案
+    } catch (error) {
+      console.error('Vertex AI error:', error);
       summaryText = this.fallbackSummarize(content.contentText || '', type);
       tokensUsed = 0;
     }

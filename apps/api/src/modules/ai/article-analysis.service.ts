@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { StepfunService } from './stepfun.service';
+import { VertexAiService } from './vertex-ai.service';
 
 export interface ArticleAnalysisResult {
   qualityRating: 'A' | 'B' | 'C' | 'D';
@@ -33,7 +33,7 @@ export interface ArticleAnalysisResult {
 
 @Injectable()
 export class ArticleAnalysisService {
-  constructor(private stepfun: StepfunService) {}
+  constructor(private vertexAi: VertexAiService) {}
 
   /**
    * 分析文章质量
@@ -41,11 +41,11 @@ export class ArticleAnalysisService {
   async analyzeArticle(title: string, content: string): Promise<ArticleAnalysisResult> {
     const prompt = this.buildAnalysisPrompt(title, content);
     
-    const response = await this.stepfun.chatCompletion([
+    const response = await this.vertexAi.chatCompletion([
       { role: 'system', content: this.getSystemPrompt() },
       { role: 'user', content: prompt }
     ], {
-      model: 'step-3.5-flash',
+      model: 'gemini-2.0-flash',
       temperature: 0.3,
     });
 
@@ -226,11 +226,11 @@ ${content.substring(0, 8000)}
 - C: 一般，快速浏览即可
 - D: 水文/营销/情绪，建议跳过`;
 
-    const response = await this.stepfun.chatCompletion([
+    const response = await this.vertexAi.chatCompletion([
       { role: 'system', content: '你是文章质量评估专家，快速给出评级。' },
       { role: 'user', content: prompt }
     ], {
-      model: 'step-3.5-flash',
+      model: 'gemini-2.0-flash',
       temperature: 0.3,
     });
 

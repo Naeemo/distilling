@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
@@ -25,12 +25,15 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "d3": "^7.9.0",
     "lucide-react": "^0.468.0",
+    "swr": "^2.3.6",
     "tailwind-merge": "^2.6.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/d3": "^7.4.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@tailwindcss/postcss": "^4.0.0",

@@ -1,0 +1,13 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - apps/web/Dockerfile
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=$_NEXT_PUBLIC_API_URL
+      - -t
+      - gcr.io/$PROJECT_ID/infodigest-web:$_IMAGE_TAG
+      - .
+images:
+  - gcr.io/$PROJECT_ID/infodigest-web:$_IMAGE_TAG
