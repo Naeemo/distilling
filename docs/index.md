@@ -3,25 +3,24 @@ layout: home
 
 hero:
   name: "InfoDigest"
-  text: "Documentation for contributors and coding agents"
-  tagline: "Architecture, development workflows, deployment runbooks, and project reference for the InfoDigest monorepo."
+  text: "Product guide for readers, researchers, and assistants"
+  tagline: "Learn how to collect content, read with context, revisit what matters, and use InfoDigest across web, extension, and mobile-friendly flows."
   actions:
     - theme: brand
-      text: Get Started
-      link: /guide/overview
+      text: Start Here
+      link: /getting-started/overview
     - theme: alt
-      text: Architecture
-      link: /guide/architecture
+      text: Collect Content
+      link: /workflows/collect-content
     - theme: alt
-      text: GitHub
-      link: https://github.com/Naeemo/distilling
+      text: Browser Extension
+      link: /platforms/browser-extension
 
 features:
-  - title: Agent-friendly
-    details: Canonical docs focus on file ownership, system boundaries, validation commands, and safe contribution patterns.
-  - title: Operations-ready
-    details: Deployment and release pages describe the current GitHub Actions, Cloud Run, Cloud SQL, and secret requirements.
-  - title: Reference-first
-    details: Domain model, ingestion paths, knowledge graph behavior, and AI pipeline notes live in a dedicated reference section.
+  - title: Capture from where you already work
+    details: Save web links, pasted text, Markdown, and WeChat shares from the web app, extension, or an iOS shortcut flow.
+  - title: Read with structure, not just storage
+    details: Use summaries, highlights, tags, and reading states to turn a pile of links into a working knowledge library.
+  - title: Return to what matters
+    details: Revisit content through spaced review and knowledge graph exploration when you need memory, context, or synthesis.
 ---
-

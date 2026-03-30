@@ -31,20 +31,23 @@ Local endpoints:
 
 ## Documentation
 
-The canonical project docs now live in `docs/` and are built with VitePress.
+The repository keeps two separate documentation systems:
+
+- product-user docs in `docs/`
+- contributor and coding-agent guidance in `AGENTS.md`
 
 ```bash
 pnpm docs:dev
 pnpm docs:build
 ```
 
-Key docs entry points:
+Key entry points:
 
 - `docs/index.md`
-- `docs/guide/architecture.md`
-- `docs/guide/development.md`
-- `docs/operations/deployment.md`
-- `docs/guide/agent-guide.md`
+- `docs/getting-started/overview.md`
+- `docs/workflows/collect-content.md`
+- `docs/platforms/browser-extension.md`
+- `AGENTS.md`
 
 ## License
 

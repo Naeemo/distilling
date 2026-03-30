@@ -8,37 +8,46 @@ const base =
 export default defineConfig({
   title: 'InfoDigest Docs',
   description:
-    'Contribution, architecture, and operations guide for the InfoDigest monorepo.',
+    'Product documentation for collecting, understanding, and revisiting information with InfoDigest.',
   lang: 'en-US',
   base,
   cleanUrls: true,
   lastUpdated: true,
   themeConfig: {
     nav: [
-      { text: 'Guide', link: '/guide/overview' },
-      { text: 'Operations', link: '/operations/deployment' },
-      { text: 'Reference', link: '/reference/domain-model' },
+      { text: 'Get Started', link: '/getting-started/overview' },
+      { text: 'Workflows', link: '/workflows/collect-content' },
+      { text: 'Platforms', link: '/platforms/web-app' },
+      { text: 'Reference', link: '/reference/concepts' },
       { text: 'GitHub', link: `https://github.com/${repository}` },
     ],
     sidebar: {
-      '/guide/': [
+      '/getting-started/': [
         {
-          text: 'Guide',
+          text: 'Get Started',
           items: [
-            { text: 'Overview', link: '/guide/overview' },
-            { text: 'Architecture', link: '/guide/architecture' },
-            { text: 'Development', link: '/guide/development' },
-            { text: 'Contributing', link: '/guide/contributing' },
-            { text: 'Agent Guide', link: '/guide/agent-guide' },
+            { text: 'Overview', link: '/getting-started/overview' },
+            { text: 'First Workflow', link: '/getting-started/first-workflow' },
           ],
         },
       ],
-      '/operations/': [
+      '/workflows/': [
         {
-          text: 'Operations',
+          text: 'Workflows',
           items: [
-            { text: 'Deployment', link: '/operations/deployment' },
-            { text: 'Release Process', link: '/operations/release' },
+            { text: 'Collect Content', link: '/workflows/collect-content' },
+            { text: 'Read and Review', link: '/workflows/read-and-review' },
+            { text: 'Knowledge Graph', link: '/workflows/knowledge-graph' },
+          ],
+        },
+      ],
+      '/platforms/': [
+        {
+          text: 'Platforms',
+          items: [
+            { text: 'Web App', link: '/platforms/web-app' },
+            { text: 'Browser Extension', link: '/platforms/browser-extension' },
+            { text: 'Mobile Shortcut', link: '/platforms/mobile-shortcut' },
           ],
         },
       ],
@@ -46,17 +55,8 @@ export default defineConfig({
         {
           text: 'Reference',
           items: [
-            { text: 'Domain Model', link: '/reference/domain-model' },
-            { text: 'Content Ingestion', link: '/reference/content-ingestion' },
-            { text: 'Knowledge Graph', link: '/reference/knowledge-graph' },
-            {
-              text: 'Intelligence Pipeline',
-              link: '/reference/intelligence-pipeline',
-            },
-            {
-              text: 'Mobile and Extension',
-              link: '/reference/mobile-and-extension',
-            },
+            { text: 'Concepts', link: '/reference/concepts' },
+            { text: 'Troubleshooting', link: '/reference/troubleshooting' },
           ],
         },
       ],
