@@ -86,6 +86,8 @@ export default function RegisterPage() {
               <Input
                 label="昵称"
                 type="text"
+                aria-label="注册昵称"
+                data-testid="register-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="您的昵称"
@@ -94,6 +96,8 @@ export default function RegisterPage() {
               <Input
                 label="邮箱"
                 type="email"
+                aria-label="注册邮箱"
+                data-testid="register-email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
@@ -103,6 +107,8 @@ export default function RegisterPage() {
               <Input
                 label="密码"
                 type="password"
+                aria-label="注册密码"
+                data-testid="register-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -112,6 +118,8 @@ export default function RegisterPage() {
               <Input
                 label="确认密码"
                 type="password"
+                aria-label="确认注册密码"
+                data-testid="register-confirm-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
@@ -128,6 +136,7 @@ export default function RegisterPage() {
                 type="submit"
                 className="w-full"
                 isLoading={isLoading}
+                data-testid="register-submit"
               >
                 注册
               </Button>

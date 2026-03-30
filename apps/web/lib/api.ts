@@ -21,7 +21,10 @@ async function fetchWithAuth(url: string, config: RequestConfig = {}) {
   // 构建 URL
   let fullUrl = `${API_BASE_URL}${url}`;
   if (config.params) {
-    const params = new URLSearchParams(config.params);
+    const filteredParams = Object.fromEntries(
+      Object.entries(config.params).filter(([, value]) => value != null && value !== '')
+    );
+    const params = new URLSearchParams(filteredParams);
     fullUrl += `?${params.toString()}`;
   }
   

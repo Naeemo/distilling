@@ -250,6 +250,7 @@ export default function ReaderPage() {
           <button
             onClick={() => router.push('/dashboard')}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            data-testid="reader-back"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -266,6 +267,8 @@ export default function ReaderPage() {
               value={content.status}
               onChange={(e) => updateStatus(e.target.value as Content['status'])}
               className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              aria-label="阅读状态"
+              data-testid="reader-status-select"
             >
               <option value="UNREAD">未读</option>
               <option value="READING">阅读中</option>
@@ -320,6 +323,7 @@ export default function ReaderPage() {
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setViewMode('summary')}
+            data-testid="reader-summary-tab"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               viewMode === 'summary'
                 ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
@@ -330,6 +334,7 @@ export default function ReaderPage() {
           </button>
           <button
             onClick={() => setViewMode('full')}
+            data-testid="reader-full-tab"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               viewMode === 'full'
                 ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
@@ -369,6 +374,7 @@ export default function ReaderPage() {
                         onClick={handleGenerateSummary}
                         isLoading={isGenerating}
                         disabled={isGenerating}
+                        data-testid="reader-generate-summary"
                       >
                         {isGenerating ? '生成中...' : '生成摘要'}
                       </Button>

@@ -295,7 +295,7 @@ export class ContentAggregatorService {
         // 从内容正文提取事件 (简化版)
         const extractedEvents = this.extractEventsFromContent(content);
         events.push(...extractedEvents);
-      } catch (error) {
+      } catch (error: any) {
         this.logger.warn(`Error processing content ${content.id} for timeline: ${error.message}`);
       }
     });

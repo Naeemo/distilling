@@ -83,6 +83,7 @@ export default function DashboardPage() {
             <button
               key={filter.label}
               onClick={() => setFilterStatus(filter.value)}
+              data-testid={`dashboard-filter-${filter.value?.toLowerCase() ?? 'all'}`}
               className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
                 filterStatus === filter.value
                   ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
@@ -98,6 +99,8 @@ export default function DashboardPage() {
 
         <Input
           placeholder="搜索标题或内容..."
+          aria-label="搜索内容"
+          data-testid="dashboard-search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-64"
@@ -121,6 +124,7 @@ export default function DashboardPage() {
               isHoverable
               onClick={() => router.push(`/reader/${content.id}`)}
               className="cursor-pointer"
+              data-testid={`content-card-${content.id}`}
             >
               <CardBody>
                 <div className="flex items-start gap-4">

@@ -57,7 +57,7 @@ export class AiController {
       })}\n\n`);
 
       res.end();
-    } catch (error) {
+    } catch (error: any) {
       res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
       res.end();
     }

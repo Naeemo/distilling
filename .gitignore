@@ -25,6 +25,7 @@ dist/
 .turbo/
 build/
 out/
+output/playwright/
 *.tsbuildinfo
 docs/.vitepress/dist/
 

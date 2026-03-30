@@ -72,6 +72,8 @@ export default function LoginPage() {
               <Input
                 label="邮箱"
                 type="email"
+                aria-label="登录邮箱"
+                data-testid="login-email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
@@ -81,6 +83,8 @@ export default function LoginPage() {
               <Input
                 label="密码"
                 type="password"
+                aria-label="登录密码"
+                data-testid="login-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -97,6 +101,7 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full"
                 isLoading={isLoading}
+                data-testid="login-submit"
               >
                 登录
               </Button>

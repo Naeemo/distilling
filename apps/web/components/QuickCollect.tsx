@@ -170,6 +170,8 @@ export function QuickCollect({ onSuccess }: QuickCollectProps) {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onPaste={handlePaste}
+            aria-label="快速采集输入"
+            data-testid="quick-collect-input"
             placeholder={getPlaceholder()}
             className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -210,6 +212,7 @@ export function QuickCollect({ onSuccess }: QuickCollectProps) {
               onClick={handleSubmit}
               isLoading={isSubmitting}
               disabled={!inputText.trim()}
+              data-testid="quick-collect-submit"
             >
               {isSubmitting ? '保存中...' : '保存内容'}
             </Button>

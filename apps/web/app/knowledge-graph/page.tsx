@@ -10,7 +10,7 @@ import { Brain, Network, Lightbulb, Compass } from 'lucide-react';
 
 export default function KnowledgeGraphPage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6" data-testid="knowledge-graph-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">

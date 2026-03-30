@@ -100,17 +100,17 @@ export class ContentService {
 
     const where: any = { userId };
 
-    if (status) {
+    if (status && status !== 'undefined') {
       where.status = status;
     }
 
-    if (tagId) {
+    if (tagId && tagId !== 'undefined') {
       where.tags = {
         some: { tagId },
       };
     }
 
-    if (search) {
+    if (search && search !== 'undefined') {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { contentText: { contains: search, mode: 'insensitive' } },
@@ -301,7 +301,7 @@ export class ContentService {
           siteName,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       throw new BadRequestException(`Failed to fetch URL: ${error.message}`);
     }
   }

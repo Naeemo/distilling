@@ -782,7 +782,7 @@ export class UserProfileService {
           return value;
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to get cached profile: ${error.message}`);
     }
     return null;
@@ -795,7 +795,7 @@ export class UserProfileService {
         this.CACHE_TTL,
         JSON.stringify(profile),
       );
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to cache profile: ${error.message}`);
     }
   }
@@ -808,7 +808,7 @@ export class UserProfileService {
         `${this.CACHE_PREFIX}persist:${userId}`,
         JSON.stringify(profile),
       );
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to persist profile: ${error.message}`);
     }
   }
@@ -829,7 +829,7 @@ export class UserProfileService {
           }
           return value;
         }));
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to get all profiles: ${error.message}`);
       return [];
     }
