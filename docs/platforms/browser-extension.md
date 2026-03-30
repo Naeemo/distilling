@@ -18,15 +18,15 @@ Use the extension when:
 - direct URL extraction is unreliable or incomplete
 - you want the lowest-friction path from reading to saving
 
-## Preferred login model
+## Preferred auth model
 
-The extension is designed around web-to-extension token sync.
+The extension is designed around web-to-extension Integration Token sync managed by the web app session.
 
 Recommended flow:
 
 1. Log in on the InfoDigest web app.
 2. Open the extension.
-3. Let the web app session sync the access token.
+3. Let the web app session sync an Integration Token.
 4. Save the current WeChat article from the popup.
 
 The extension should not be treated as a separate standalone login surface.

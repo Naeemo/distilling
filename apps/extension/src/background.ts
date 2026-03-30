@@ -4,14 +4,16 @@
  * 支持从网页端自动同步 Token
  */
 
-const API_BASE_URL = 'http://localhost:3001';
-const API_ENDPOINT = '/api/v1/contents';
+const DEFAULT_APP_ORIGIN = 'http://localhost:3000';
+const EXTENSION_API_ENDPOINT = '/api/extension/content';
 
 interface SaveContentRequest {
   url: string;
   title: string;
   contentText: string;
-  sourceType: 'WEB';
+  author?: string;
+  coverImage?: string | null;
+  publishTime?: string | null;
 }
 
 interface ApiResponse {
@@ -29,12 +31,18 @@ async function getStoredToken(): Promise<string | null> {
   return result.infodigest_token || null;
 }
 
+async function getStoredOrigin(): Promise<string> {
+  const result = await chrome.storage.local.get('infodigest_origin');
+  return result.infodigest_origin || DEFAULT_APP_ORIGIN;
+}
+
 /**
  * 存储 Token 到 storage
  */
-async function storeToken(token: string): Promise<void> {
-  await chrome.storage.local.set({ 
+async function storeToken(token: string, origin?: string): Promise<void> {
+  await chrome.storage.local.set({
     infodigest_token: token,
+    infodigest_origin: origin || DEFAULT_APP_ORIGIN,
     token_synced_at: Date.now()
   });
 }
@@ -43,7 +51,11 @@ async function storeToken(token: string): Promise<void> {
  * 清除 Token
  */
 async function clearToken(): Promise<void> {
-  await chrome.storage.local.remove(['infodigest_token', 'token_synced_at']);
+  await chrome.storage.local.remove([
+    'infodigest_token',
+    'infodigest_origin',
+    'token_synced_at',
+  ]);
 }
 
 /**
@@ -52,14 +64,15 @@ async function clearToken(): Promise<void> {
 async function saveToApi(content: SaveContentRequest, token: string): Promise<ApiResponse> {
   const maxRetries = 3;
   let lastError: Error | null = null;
+  const appOrigin = await getStoredOrigin();
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINT}`, {
+      const response = await fetch(`${appOrigin}${EXTENSION_API_ENDPOINT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'X-Extension-Token': token
         },
         body: JSON.stringify(content)
       });
@@ -72,7 +85,7 @@ async function saveToApi(content: SaveContentRequest, token: string): Promise<Ap
       if (response.status === 401) {
         // Token 失效，清除存储
         await clearToken();
-        return { success: false, error: '登录已过期，请重新登录 InfoDigest' };
+        return { success: false, error: '登录已过期，请重新登录 InfoDigest', needLogin: true };
       }
 
       if (response.status === 403) {
@@ -159,7 +172,9 @@ async function saveCurrentArticle(): Promise<ApiResponse> {
     url: articleData.url as string,
     title: articleData.title as string,
     contentText: articleData.contentText as string,
-    sourceType: 'WEB'
+    author: articleData.author as string | undefined,
+    coverImage: articleData.coverImage as string | null | undefined,
+    publishTime: articleData.publishTime as string | null | undefined,
   };
 
   return await saveToApi(content, token);
@@ -192,16 +207,19 @@ async function getConnectionStatus(): Promise<{
   isLoggedIn: boolean;
   isWechatArticle: boolean;
   url?: string;
+  appOrigin?: string;
 }> {
-  const [tokenResult, pageResult] = await Promise.all([
+  const [tokenResult, pageResult, appOrigin] = await Promise.all([
     getStoredToken(),
-    checkCurrentPage()
+    checkCurrentPage(),
+    getStoredOrigin(),
   ]);
 
   return {
     isLoggedIn: !!tokenResult,
     isWechatArticle: pageResult.success ? pageResult.data?.isWechatArticle ?? false : false,
-    url: pageResult.success ? pageResult.data?.url : undefined
+    url: pageResult.success ? pageResult.data?.url : undefined,
+    appOrigin,
   };
 }
 
@@ -224,6 +242,9 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       case 'CLEAR_TOKEN':
         await clearToken();
         return { success: true };
+
+      case 'GET_APP_ORIGIN':
+        return { success: true, data: { appOrigin: await getStoredOrigin() } };
 
       default:
         return { success: false, error: '未知操作' };
@@ -255,7 +276,10 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
     switch (request.type) {
       case 'SET_TOKEN':
         if (request.token && typeof request.token === 'string') {
-          await storeToken(request.token);
+          await storeToken(
+            request.token,
+            typeof request.origin === 'string' ? request.origin : undefined,
+          );
           console.log('[InfoDigest] Token 已从网页同步');
           return { success: true, message: 'Token 已同步' };
         }

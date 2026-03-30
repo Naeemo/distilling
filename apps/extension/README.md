@@ -5,8 +5,8 @@
 ## 功能特性
 
 - 一键提取微信公众号文章标题、作者、正文
-- 自动调用 InfoDigest API 保存内容
-- 支持网页端自动 Token 同步
+- 自动调用 InfoDigest Web 应用的受控接口保存内容
+- 支持网页端自动同步 Integration Token
 - 错误处理和自动重试机制
 - 美观的弹窗界面
 
@@ -28,7 +28,7 @@ pnpm --filter @infodigest/extension build
 ### 登录与 Token
 
 1. 先在 InfoDigest Web 应用中登录
-2. Web 端会自动把 Access Token 同步到扩展
+2. Web 端会为扩展生成一个专用令牌并自动同步
 3. 打开扩展弹窗后即可直接保存文章
 
 ## 使用方法
@@ -73,22 +73,21 @@ pnpm --filter @infodigest/extension build
 ### 保存内容
 
 ```http
-POST http://localhost:3001/api/v1/contents
+POST http://localhost:3000/api/extension/content
 Content-Type: application/json
-Authorization: Bearer <token>
+X-Extension-Token: <extension-token>
 
 {
   "url": "https://mp.weixin.qq.com/s/...",
   "title": "文章标题",
-  "contentText": "文章内容纯文本",
-  "sourceType": "WEB"
+  "contentText": "文章内容纯文本"
 }
 ```
 
 ## 注意事项
 
-1. **CORS 问题**：确保 InfoDigest API 服务器允许来自 Chrome 扩展的跨域请求
-2. **Token 安全**：Token 存储在浏览器的本地存储中，请勿在公共电脑上使用
+1. **应用域名**：扩展会记住最近一次同步令牌时的 Web 应用域名，并通过该域名发送保存请求
+2. **Token 安全**：扩展令牌存储在浏览器的本地存储中，请勿在公共电脑上使用
 3. **网络问题**：如果保存失败，扩展会自动重试 3 次
 
 ## 故障排除

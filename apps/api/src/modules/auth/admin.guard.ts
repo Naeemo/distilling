@@ -13,6 +13,10 @@ export class AdminGuard implements CanActivate {
       throw new ForbiddenException('未登录');
     }
 
+    if (request.user?.role === 'ADMIN') {
+      return true;
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true },

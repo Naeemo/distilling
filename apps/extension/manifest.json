@@ -11,7 +11,9 @@
   "host_permissions": [
     "http://mp.weixin.qq.com/*",
     "https://mp.weixin.qq.com/*",
-    "http://localhost:3001/*"
+    "http://localhost:3000/*",
+    "https://infodigest.app/*",
+    "https://infodigest.io/*"
   ],
   "action": {
     "default_popup": "dist/popup.html",

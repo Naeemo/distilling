@@ -19,17 +19,28 @@ Use the shortcut flow when:
 
 - you often collect from iPhone or iPad
 - you want a lightweight handoff into InfoDigest
-- you are comfortable editing shortcut settings yourself
+- you are comfortable copying an Integration Token into the shortcut once
 
 ## What to expect
 
-The shortcut is a reference artifact, not a fully supported first-party mobile product.
+The shortcut is a reference artifact built on top of the same integration-token flow used for external clients.
 
 Think of it as:
 
 - a starting point
 - a way to test mobile-friendly capture
 - a bridge into the same library used by the web app
+
+## Setup
+
+Before using the shortcut:
+
+1. sign in to the web app
+2. open `Dashboard -> Integrations`
+3. generate an Integration Token
+4. paste that token into the shortcut setup question
+
+The shortcut sends requests to the Next.js app, and the Next.js app forwards them to the internal API. The Nest API is not called directly from the shortcut.
 
 ## Best fallback
 

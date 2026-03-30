@@ -31,6 +31,41 @@ export class CreateTextContentDto {
   tags?: string[];
 }
 
+export class CreateImportedContentDto {
+  @ApiProperty({ example: 'https://mp.weixin.qq.com/s/example' })
+  @IsString()
+  url: string;
+
+  @ApiProperty({ example: '文章标题' })
+  @IsString()
+  title: string;
+
+  @ApiProperty({ example: '文章正文...' })
+  @IsString()
+  contentText: string;
+
+  @ApiProperty({ example: '作者名', required: false })
+  @IsOptional()
+  @IsString()
+  author?: string;
+
+  @ApiProperty({ example: 'https://example.com/cover.jpg', required: false })
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+
+  @ApiProperty({ example: '2026-03-30T10:00:00.000Z', required: false })
+  @IsOptional()
+  @IsString()
+  publishTime?: string;
+
+  @ApiProperty({ example: ['微信'], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+}
+
 export class UpdateStatusDto {
   @ApiProperty({ enum: ['UNREAD', 'READING', 'READ'] })
   @IsString()

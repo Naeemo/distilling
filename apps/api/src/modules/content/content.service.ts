@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import { ContentStatus } from '@prisma/client';
 import { BrowserService } from '../browser/browser.service';
+import { CreateImportedContentDto } from './dto';
 import Redis from 'ioredis';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -93,6 +94,76 @@ export class ContentService {
     await this.createInitialReview(userId, content.id);
 
     return content;
+  }
+
+  async createImported(userId: string, data: CreateImportedContentDto) {
+    const existing = await this.prisma.content.findFirst({
+      where: { userId, url: data.url },
+    });
+
+    if (existing) {
+      return {
+        ...existing,
+        isExisting: true,
+      };
+    }
+
+    const content = await this.prisma.content.create({
+      data: {
+        userId,
+        url: data.url,
+        title: data.title,
+        contentText: data.contentText,
+        sourceType: 'WEB',
+        metadata: {
+          author: data.author ?? null,
+          publishDate: data.publishTime ?? null,
+          coverImage: data.coverImage ?? null,
+          siteName: 'WeChat',
+        },
+      },
+    });
+
+    if (data.tags && data.tags.length > 0) {
+      const tags = await Promise.all(
+        data.tags.map(async (name) => {
+          const existingTag = await this.prisma.tag.findFirst({
+            where: { userId, name },
+            select: { id: true },
+          });
+
+          if (existingTag) {
+            return existingTag.id;
+          }
+
+          const createdTag = await this.prisma.tag.create({
+            data: {
+              userId,
+              name,
+              color: '#10b981',
+            },
+            select: { id: true },
+          });
+
+          return createdTag.id;
+        }),
+      );
+
+      await this.prisma.contentTag.createMany({
+        data: tags.map((tagId) => ({
+          contentId: content.id,
+          tagId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    await this.createInitialReview(userId, content.id);
+
+    return {
+      ...content,
+      isExisting: false,
+    };
   }
 
   async findAll(userId: string, params: {

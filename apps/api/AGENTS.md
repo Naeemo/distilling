@@ -6,7 +6,6 @@ Scope: `apps/api`
 
 The API is the system of record for:
 
-- authentication
 - content ingestion and retrieval
 - highlights, tags, and review data
 - AI summarization and analysis
@@ -44,6 +43,7 @@ pnpm --filter @infodigest/api test
 ## Gotchas
 
 - `type-check` runs `prisma generate` first; expect generated client output to matter for types.
+- Browser auth now lives in `apps/web`; this API should only trust internal Next.js-to-Nest requests plus explicit public token ingress paths proxied by Next.
 - Prisma schema changes ripple into multiple modules quickly.
 - Ingestion changes often affect web, extension, and docs at the same time.
 - LLM runtime config falls back to `LLM_*` env vars when database-backed system config rows are absent; use that path for local Ollama development.

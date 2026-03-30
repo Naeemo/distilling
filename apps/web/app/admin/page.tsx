@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/auth';
 
 interface LLMConfig {
   providerType: 'vertex-ai' | 'custom';
@@ -18,7 +17,6 @@ const DEFAULT_CUSTOM_MODELS = ['step-3.5-flash', 'step-3.5-turbo', 'gpt-4o'];
 
 export default function AdminConfigPage() {
   const router = useRouter();
-  const { user, accessToken } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -31,26 +29,13 @@ export default function AdminConfigPage() {
     models: VERTEX_AI_MODELS,
   });
 
-  // 检查管理员权限
-  useEffect(() => {
-    if (!accessToken) {
-      router.push('/login');
-      return;
-    }
-    if (user && user.role !== 'ADMIN') {
-      router.push('/dashboard');
-    }
-  }, [user, accessToken, router]);
-
   // 加载配置
   useEffect(() => {
-    if (!accessToken) return;
-
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/system-config/llm/config', {
-          headers: { Authorization: `Bearer ${accessToken}` },
+        const res = await fetch('/api/v1/system-config/llm/config', {
+          credentials: 'same-origin',
         });
 
         if (res.ok) {
@@ -65,7 +50,7 @@ export default function AdminConfigPage() {
     };
 
     loadConfig();
-  }, [accessToken]);
+  }, []);
 
   // 切换 provider 类型
   const handleProviderTypeChange = (type: 'vertex-ai' | 'custom') => {
@@ -91,18 +76,16 @@ export default function AdminConfigPage() {
   };
 
   const handleSave = async () => {
-    if (!accessToken) return;
-
     try {
       setSaving(true);
       setMessage('');
 
-      const res = await fetch('/api/system-config/llm/config', {
+      const res = await fetch('/api/v1/system-config/llm/config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
         },
+        credentials: 'same-origin',
         body: JSON.stringify(config),
       });
 
@@ -138,14 +121,6 @@ export default function AdminConfigPage() {
       models: config.models.filter((m) => m !== model),
     });
   };
-
-  if (!user || user.role !== 'ADMIN') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>无权限访问</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">

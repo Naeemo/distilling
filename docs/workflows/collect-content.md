@@ -46,7 +46,7 @@ The repository includes an iOS shortcut reference configuration for lightweight 
 Use it when:
 
 - you want to pass a link or share payload from iOS
-- you are comfortable with a shortcut-based setup
+- you are comfortable with a shortcut-based setup and a per-account Integration Token
 - you do not need a dedicated native app
 
 Read [Mobile Shortcut](/platforms/mobile-shortcut) for details.

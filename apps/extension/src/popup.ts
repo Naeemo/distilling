@@ -17,6 +17,7 @@ interface ConnectionStatus {
   isLoggedIn: boolean;
   isWechatArticle: boolean;
   url?: string;
+  appOrigin?: string;
 }
 
 // DOM 元素
@@ -180,12 +181,20 @@ async function saveArticle(): Promise<void> {
 /**
  * 打开 InfoDigest 网页
  */
-function openInfoDigest(): void {
-  chrome.tabs.create({ url: 'http://localhost:3000' });
+async function openInfoDigest(): Promise<void> {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'GET_APP_ORIGIN' });
+    const appOrigin = response?.success ? response.data?.appOrigin : undefined;
+    chrome.tabs.create({ url: appOrigin || 'http://localhost:3000' });
+  } catch {
+    chrome.tabs.create({ url: 'http://localhost:3000' });
+  }
 }
 
 // 事件监听
-elements.openWebBtn.addEventListener('click', openInfoDigest);
+elements.openWebBtn.addEventListener('click', () => {
+  void openInfoDigest();
+});
 elements.saveBtn.addEventListener('click', saveArticle);
 
 // 初始化

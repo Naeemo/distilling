@@ -46,7 +46,7 @@ InfoDigest 会识别输入内容，并决定是抓取网页还是直接保存文
 以下情况适合使用它：
 
 - 你想从 iOS 传递链接或分享内容
-- 你能够接受基于快捷指令的设置方式
+- 你能够接受基于快捷指令加单独 Integration Token 的设置方式
 - 你不需要独立的原生 App
 
 详细说明见 [移动端快捷指令](/zh/platforms/mobile-shortcut)。
