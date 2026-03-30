@@ -1,10 +1,11 @@
 {
-  "name": "infodigest-extension",
+  "name": "@infodigest/extension",
   "version": "1.0.0",
   "description": "InfoDigest Chrome 扩展 - 一键保存微信文章",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
+    "build": "tsc --project tsconfig.json && cp src/popup.html dist/popup.html",
+    "watch": "tsc --watch --project tsconfig.json",
+    "type-check": "tsc --noEmit --project tsconfig.json",
     "clean": "rm -rf dist"
   },
   "devDependencies": {

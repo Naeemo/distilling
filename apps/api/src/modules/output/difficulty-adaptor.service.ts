@@ -662,7 +662,7 @@ export class DifficultyAdaptorService {
    * 为专家优化内容
    */
   private optimizeForExpert(chunk: ContentChunk, profile: CognitiveProfile): string {
-    let content = chunk.content;
+    const content = chunk.content;
 
     // 移除已知术语的解释 (在实际实现中，可能需要标记而非直接移除)
     for (const term of chunk.terms) {

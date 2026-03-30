@@ -35,7 +35,6 @@ const elements = {
 };
 
 // 当前状态
-let currentStatus: ConnectionStatus | null = null;
 let currentArticle: ArticleData | null = null;
 
 /**
@@ -108,7 +107,7 @@ async function initialize(): Promise<void> {
       return;
     }
 
-    currentStatus = response.data;
+    const currentStatus = response.data as ConnectionStatus;
 
     // 情况1：未登录
     if (!currentStatus?.isLoggedIn) {

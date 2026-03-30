@@ -6,7 +6,7 @@
 
 - 一键提取微信公众号文章标题、作者、正文
 - 自动调用 InfoDigest API 保存内容
-- 支持 Token 配置管理
+- 支持网页端自动 Token 同步
 - 错误处理和自动重试机制
 - 美观的弹窗界面
 
@@ -14,18 +14,22 @@
 
 ### 开发模式安装
 
+先构建扩展资源：
+
+```bash
+pnpm --filter @infodigest/extension build
+```
+
 1. 打开 Chrome 浏览器，进入 `chrome://extensions/`
 2. 开启右上角的「开发者模式」
 3. 点击「加载已解压的扩展程序」
-4. 选择本扩展所在的文件夹
+4. 选择 `apps/extension` 文件夹
 
-### 配置 Token
+### 登录与 Token
 
-1. 点击浏览器工具栏的 InfoDigest 图标
-2. 在弹出窗口中输入你的 InfoDigest API Token
-3. 点击「保存 Token」
-
-> Token 可以从 InfoDigest Web 应用的 localStorage 中获取，或联系管理员获取
+1. 先在 InfoDigest Web 应用中登录
+2. Web 端会自动把 Access Token 同步到扩展
+3. 打开扩展弹窗后即可直接保存文章
 
 ## 使用方法
 
@@ -44,6 +48,7 @@ extension/
 │   ├── background.ts      # 后台服务 - 调用 API
 │   ├── popup.html         # 弹窗界面
 │   └── popup.ts           # 弹窗逻辑
+├── dist/                  # 编译产物（build 后生成）
 └── README.md
 ```
 
@@ -52,38 +57,16 @@ extension/
 ### 构建
 
 ```bash
-# 安装依赖
-npm install
+# 在仓库根目录安装依赖
+pnpm install
 
-# 编译 TypeScript
-npx tsc
-
-# 或使用构建脚本
-npm run build
+# 编译 TypeScript 并复制 popup.html
+pnpm --filter @infodigest/extension build
 ```
 
 ### TypeScript 配置
 
-创建 `tsconfig.json`：
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ES2020",
-    "lib": ["ES2020", "DOM"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-    "types": ["chrome"]
-  },
-  "include": ["src/**/*"]
-}
-```
+扩展源码位于 `src/`，构建产物输出到 `dist/`，`manifest.json` 直接引用 `dist/*.js` 与 `dist/popup.html`。
 
 ## API 接口
 
@@ -114,9 +97,10 @@ Authorization: Bearer <token>
 
 - 确保当前页面是微信公众号文章（`mp.weixin.qq.com`）
 
-### 提示「未配置 Token」
+### 提示「未登录」
 
-- 点击扩展图标，在弹出窗口中设置 Token
+- 先确认已经在 InfoDigest Web 端完成登录
+- 刷新 Web 页面，等待 Token 自动同步到扩展
 
 ### 保存失败
 

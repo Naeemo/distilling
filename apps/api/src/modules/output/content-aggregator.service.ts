@@ -647,7 +647,7 @@ export class ContentAggregatorService {
     if (n === 1) return [[0]];
 
     // 每个点初始为一个簇
-    let clusters: number[][] = Array.from({ length: n }, (_, i) => [i]);
+    const clusters: number[][] = Array.from({ length: n }, (_, i) => [i]);
 
     // 层次聚类
     while (clusters.length > maxClusters) {

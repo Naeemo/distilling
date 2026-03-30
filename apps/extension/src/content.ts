@@ -112,7 +112,7 @@ function extractCoverImage(): string | null {
     if (match?.[1]) {
       return match[1];
     }
-  } catch (e) {
+  } catch {
     // 忽略错误
   }
 
@@ -158,7 +158,7 @@ function extractArticleData(): ArticleData {
 /**
  * 监听来自 background 的消息
  */
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'EXTRACT_ARTICLE') {
     console.log('[InfoDigest] 收到提取文章请求');
 

@@ -324,7 +324,7 @@ export class SignificanceScorer {
     const userTags = userProfile.interestTags.map(t => t.toLowerCase());
 
     let matchCount = 0;
-    let matchedTags: string[] = [];
+    const matchedTags: string[] = [];
 
     // 检查标签直接匹配
     for (const userTag of userTags) {

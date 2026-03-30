@@ -2,8 +2,9 @@
  * 微信文章扩展测试脚本
  * 
  * 使用方法:
- * 1. 启动后端: cd apps/api && npm run start:dev
- * 2. 运行测试: npx ts-node scripts/test-extension.ts [微信文章URL]
+ * 1. 构建扩展: pnpm --filter @infodigest/extension build
+ * 2. 启动后端: pnpm --filter @infodigest/api dev
+ * 3. 运行测试: pnpm --filter @infodigest/api exec ts-node ../../scripts/test-extension.ts [微信文章URL]
  * 
  * 测试步骤:
  * 1. 启动真实 Chrome 浏览器

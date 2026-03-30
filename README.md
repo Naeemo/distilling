@@ -6,7 +6,9 @@ AI驱动的信息消化工具 - MVP版本
 
 - **后端**: NestJS + Prisma + PostgreSQL + Redis
 - **前端**: Next.js v16 + React v19 + Tailwind CSS v4
-- **部署**: Google Cloud (计划中)
+- **浏览器扩展**: Chrome Extension (Manifest V3)
+- **AI**: Vertex AI Gemini 为主，保留多供应商接入层
+- **部署**: Google Cloud Build / Docker 配置已在仓库中
 
 ## 核心功能
 
@@ -17,10 +19,10 @@ AI驱动的信息消化工具 - MVP版本
 - [x] 阅读器（摘要/全文切换，高亮笔记）
 - [x] 知识库管理（列表、搜索、标签、归档）
 - [x] 复习系统（简化SM-2算法）
+- [x] 微信文章浏览器扩展采集
 
 ### 🚧 P1 - 开发中
 - [ ] 阅读进度保存
-- [ ] 深色模式
 - [ ] 导出功能
 
 ## 本地开发
@@ -33,9 +35,8 @@ cd distilling
 # 安装依赖 (使用 pnpm)
 pnpm install
 
-# 配置环境变量
+# 配置环境变量（Web 端本地环境变量按需自行添加）
 cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.local.example apps/web/.env.local
 
 # 启动数据库和 Redis
 docker-compose up -d
@@ -63,6 +64,7 @@ distilling/
 │   │   ├── lib/          # 工具函数
 │   │   ├── stores/       # Zustand 状态管理
 │   │   └── types/        # TypeScript 类型
+│   ├── extension/        # Chrome 扩展（微信文章采集）
 │   └── api/              # NestJS 后端
 │       ├── src/
 │       │   ├── modules/  # 业务模块
@@ -78,7 +80,8 @@ distilling/
 - **前端**: Next.js 16 + React 19 + Tailwind CSS 4
 - **状态管理**: Zustand (轻量级，支持持久化)
 - **后端**: NestJS + Prisma + Swagger
-- **AI**: OpenAI GPT + 流式响应 (SSE)
+- **AI**: Vertex AI / StepFun 抽象层 + 流式响应
+- **采集**: 浏览器扩展与网页端自动 Token 同步
 
 ## API 文档
 

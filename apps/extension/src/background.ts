@@ -21,9 +21,6 @@ interface ApiResponse {
   needLogin?: boolean;
 }
 
-// 扩展 ID（用于外部网站通信验证）
-const EXTENSION_ID = chrome.runtime.id;
-
 /**
  * 从 storage 获取 Token
  */
@@ -215,7 +212,7 @@ async function getConnectionStatus(): Promise<{
 /**
  * 监听来自 popup 的消息
  */
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   const handleMessage = async () => {
     switch (request.action) {
       case 'SAVE_ARTICLE':

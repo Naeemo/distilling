@@ -4,24 +4,24 @@
 
 使用 Playwright 控制真实 Chrome 浏览器测试扩展。
 
-### 安装依赖
+### 准备
 
 ```bash
-# 全局安装 playwright
-npm install -g playwright
+# 安装仓库依赖
+pnpm install
 
-# 安装 Chromium 浏览器
-playwright install chromium
+# 构建扩展
+pnpm --filter @infodigest/extension build
 ```
 
 ### 运行测试
 
 ```bash
 # 测试默认文章
-npx ts-node scripts/test-extension.ts
+pnpm --filter @infodigest/api exec ts-node ../../scripts/test-extension.ts
 
 # 测试指定微信文章
-npx ts-node scripts/test-extension.ts "https://mp.weixin.qq.com/s?__biz=xxx&mid=xxx"
+pnpm --filter @infodigest/api exec ts-node ../../scripts/test-extension.ts "https://mp.weixin.qq.com/s?__biz=xxx&mid=xxx"
 ```
 
 ### 测试过程
@@ -60,7 +60,8 @@ npx ts-node scripts/test-extension.ts "https://mp.weixin.qq.com/s?__biz=xxx&mid=
 1. 打开 Chrome，进入 `chrome://extensions/`
 2. 开启右上角"开发者模式"
 3. 点击"加载已解压的扩展程序"
-4. 选择 `apps/extension` 目录
+4. 先执行一次 `pnpm --filter @infodigest/extension build`
+5. 选择 `apps/extension` 目录
 
 ### 2. 测试提取
 
