@@ -10,6 +10,9 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean && rm -rf node_modules",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "db:migrate": "cd apps/api && pnpm prisma migrate dev",
     "db:generate": "cd apps/api && pnpm prisma generate",
     "db:seed": "cd apps/api && pnpm prisma db seed",
@@ -19,7 +22,8 @@
   "devDependencies": {
     "turbo": "^2.3.0",
     "@types/node": "^20",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitepress": "^1.6.4"
   },
   "engines": {
     "node": ">=20.0.0",
