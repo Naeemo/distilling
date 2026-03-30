@@ -6,6 +6,11 @@
 
 const DEFAULT_APP_ORIGIN = 'http://localhost:3000';
 const EXTENSION_API_ENDPOINT = '/api/extension/content';
+const ALLOWED_APP_ORIGINS = new Set([
+  'http://localhost:3000',
+  'https://infodigest.app',
+  'https://infodigest.io',
+]);
 
 interface SaveContentRequest {
   url: string;
@@ -34,6 +39,20 @@ async function getStoredToken(): Promise<string | null> {
 async function getStoredOrigin(): Promise<string> {
   const result = await chrome.storage.local.get('infodigest_origin');
   return result.infodigest_origin || DEFAULT_APP_ORIGIN;
+}
+
+function getAllowedSenderOrigin(sender: chrome.runtime.MessageSender): string | null {
+  const rawSenderUrl = sender.origin || sender.url;
+  if (!rawSenderUrl) {
+    return null;
+  }
+
+  try {
+    const origin = new URL(rawSenderUrl).origin;
+    return ALLOWED_APP_ORIGINS.has(origin) ? origin : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -261,25 +280,20 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
  */
 chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
   const handleExternalMessage = async () => {
-    // 验证消息来源（可选的安全检查）
-    const senderUrl = sender.url || sender.origin || '';
-    const isAllowedOrigin = 
-      senderUrl.includes('localhost:3000') ||
-      senderUrl.includes('infodigest.app') ||  // 生产域名
-      senderUrl.includes('infodigest.io');     // 备用域名
+    const senderOrigin = getAllowedSenderOrigin(sender);
 
-    if (!isAllowedOrigin) {
-      console.warn('[InfoDigest] 拒绝来自未授权来源的消息:', senderUrl);
+    if (!senderOrigin) {
+      console.warn(
+        '[InfoDigest] 拒绝来自未授权来源的消息:',
+        sender.origin || sender.url || '',
+      );
       return { success: false, error: '未授权的来源' };
     }
 
     switch (request.type) {
       case 'SET_TOKEN':
         if (request.token && typeof request.token === 'string') {
-          await storeToken(
-            request.token,
-            typeof request.origin === 'string' ? request.origin : undefined,
-          );
+          await storeToken(request.token, senderOrigin);
           console.log('[InfoDigest] Token 已从网页同步');
           return { success: true, message: 'Token 已同步' };
         }

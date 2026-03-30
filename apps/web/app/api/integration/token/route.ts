@@ -2,6 +2,10 @@ import { auth } from '@/lib/auth';
 import { createExtensionToken } from '@/lib/extension-token';
 import { prisma } from '@/lib/prisma';
 
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store',
+} as const;
+
 async function getAuthenticatedUser(request: Request) {
   const session = await auth.api.getSession({
     headers: request.headers,
@@ -14,7 +18,7 @@ async function getAuthenticatedUser(request: Request) {
   return session.user;
 }
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   const user = await getAuthenticatedUser(request);
   if (!user) {
     return Response.json({ message: 'Unauthorized' }, { status: 401 });
@@ -30,7 +34,10 @@ export async function GET(request: Request) {
     },
   });
 
-  return Response.json({ token: token.token });
+  return Response.json(
+    { token: token.token },
+    { headers: NO_STORE_HEADERS },
+  );
 }
 
 export async function DELETE(request: Request) {
@@ -47,5 +54,8 @@ export async function DELETE(request: Request) {
     },
   });
 
-  return Response.json({ success: true });
+  return Response.json(
+    { success: true },
+    { headers: NO_STORE_HEADERS },
+  );
 }

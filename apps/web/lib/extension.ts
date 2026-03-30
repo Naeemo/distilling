@@ -29,7 +29,9 @@ export async function syncExtensionTokenFromSession() {
   if (!runtime?.sendMessage) return;
 
   const response = await fetch('/api/integration/token', {
+    method: 'POST',
     credentials: 'same-origin',
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -46,7 +48,6 @@ export async function syncExtensionTokenFromSession() {
     {
       type: 'SET_TOKEN',
       token: payload.token,
-      origin: window.location.origin,
     },
     () => undefined,
   );

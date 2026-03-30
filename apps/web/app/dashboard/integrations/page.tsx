@@ -16,7 +16,9 @@ export default function IntegrationsPage() {
 
     try {
       const response = await fetch('/api/integration/token', {
+        method: 'POST',
         credentials: 'same-origin',
+        cache: 'no-store',
       });
 
       if (!response.ok) {
