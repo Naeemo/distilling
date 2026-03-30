@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SystemConfigDto, UpdateSystemConfigDto, CreateSystemConfigDto, LLMConfigDto } from './dto';
 
@@ -18,7 +19,10 @@ export class SystemConfigService {
   private readonly STALE_TIME = 5 * 60 * 1000;      // 5分钟内视为新鲜，直接返回
   private readonly MAX_STALE_TIME = 30 * 60 * 1000; // 30分钟后强制刷新
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   // ==================== SWR 缓存核心 ====================
 
@@ -158,10 +162,17 @@ export class SystemConfigService {
       key,
       this.valueCache,
       async () => {
-        const config = await this.prisma.systemConfig.findUnique({
-          where: { key },
-        });
-        return config?.value || null;
+        try {
+          const config = await this.prisma.systemConfig.findUnique({
+            where: { key },
+          });
+          return config?.value || null;
+        } catch (error: any) {
+          if (this.isMissingSystemConfigTableError(error)) {
+            return null;
+          }
+          throw error;
+        }
       },
       options
     );
@@ -242,17 +253,17 @@ export class SystemConfigService {
           this.getValue('LLM_MODELS', { force: true }),
         ]);
 
-        const isVertexAI = providerType === 'vertex-ai';
+        const envConfig = this.getEnvLLMConfig();
+        const resolvedProviderType = providerType || envConfig.providerType;
+        const isVertexAI = resolvedProviderType === 'vertex-ai';
 
         return {
           providerType: isVertexAI ? 'vertex-ai' : 'custom',
-          provider: provider || (isVertexAI ? 'vertex-ai' : 'custom'),
-          baseURL: baseURL || (isVertexAI ? '' : 'https://api.stepfun.com/v1'),
-          apiKey: apiKey || '',
-          defaultModel: defaultModel || (isVertexAI ? 'gemini-2.0-flash' : 'step-3.5-flash'),
-          models: models ? JSON.parse(models) : (isVertexAI 
-            ? ['gemini-2.0-flash', 'gemini-2.0-pro', 'gemini-2.5-flash']
-            : ['step-3.5-flash', 'step-3.5-turbo', 'step-4']),
+          provider: provider || envConfig.provider,
+          baseURL: baseURL ?? envConfig.baseURL,
+          apiKey: apiKey ?? envConfig.apiKey,
+          defaultModel: defaultModel || envConfig.defaultModel,
+          models: this.parseModels(models) || envConfig.models,
         };
       },
       options
@@ -303,38 +314,46 @@ export class SystemConfigService {
   // ==================== 初始化默认配置 ====================
 
   async initializeDefaults(): Promise<void> {
+    const envConfig = this.getEnvLLMConfig();
     const defaults = [
       {
         key: 'LLM_PROVIDER_TYPE',
-        value: 'vertex-ai',
+        value: envConfig.providerType,
         category: 'llm',
         isSecret: false,
         description: 'LLM 提供商类型 (vertex-ai: Google Vertex AI, custom: OpenAI 兼容)',
       },
       {
         key: 'LLM_PROVIDER',
-        value: 'vertex-ai',
+        value: envConfig.provider,
         category: 'llm',
         isSecret: false,
         description: 'LLM 提供商显示名称',
       },
       {
         key: 'LLM_BASE_URL',
-        value: '',
+        value: envConfig.baseURL,
         category: 'llm',
         isSecret: false,
         description: 'API 基础 URL (自定义 provider 时使用)',
       },
       {
+        key: 'LLM_API_KEY',
+        value: envConfig.apiKey,
+        category: 'llm',
+        isSecret: true,
+        description: 'API 密钥 (自定义 provider 时使用)',
+      },
+      {
         key: 'LLM_DEFAULT_MODEL',
-        value: 'gemini-2.0-flash',
+        value: envConfig.defaultModel,
         category: 'llm',
         isSecret: false,
         description: '默认使用的模型',
       },
       {
         key: 'LLM_MODELS',
-        value: JSON.stringify(['gemini-2.0-flash', 'gemini-2.0-pro', 'gemini-2.5-flash']),
+        value: JSON.stringify(envConfig.models),
         category: 'llm',
         isSecret: false,
         description: '可用模型列表 (JSON 数组)',
@@ -359,5 +378,71 @@ export class SystemConfigService {
   private maskSecret(value: string): string {
     if (!value || value.length <= 8) return '***';
     return value.substring(0, 4) + '****' + value.substring(value.length - 4);
+  }
+
+  private isMissingSystemConfigTableError(error: any): boolean {
+    return error?.code === 'P2021' ||
+      String(error?.message || '').includes('system_configs');
+  }
+
+  private parseModels(raw: string | null): string[] | null {
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) {
+        return parsed;
+      }
+    } catch {
+      const fallback = raw
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      if (fallback.length > 0) {
+        return fallback;
+      }
+    }
+
+    return null;
+  }
+
+  private getEnvLLMConfig(): LLMConfigDto {
+    const envProviderType = this.configService.get<string>('LLM_PROVIDER_TYPE');
+    const envProvider = this.configService.get<string>('LLM_PROVIDER');
+    const envBaseURL = this.configService.get<string>('LLM_BASE_URL');
+    const envApiKey = this.configService.get<string>('LLM_API_KEY');
+    const envDefaultModel = this.configService.get<string>('LLM_DEFAULT_MODEL');
+    const envModels = this.parseModels(this.configService.get<string>('LLM_MODELS') || null);
+
+    const hasCustomEnv =
+      Boolean(envProviderType === 'custom') ||
+      Boolean(envBaseURL) ||
+      Boolean(envApiKey) ||
+      Boolean(envDefaultModel) ||
+      Boolean(envModels?.length);
+
+    if (hasCustomEnv) {
+      return {
+        providerType: 'custom',
+        provider: envProvider || 'custom',
+        baseURL: envBaseURL || 'http://127.0.0.1:11434/v1',
+        apiKey: envApiKey || 'ollama',
+        defaultModel: envDefaultModel || 'qwen3.5:2b',
+        models: envModels || [envDefaultModel || 'qwen3.5:2b'],
+      };
+    }
+
+    const vertexDefaultModel = this.configService.get<string>('VERTEX_AI_MODEL', 'gemini-2.0-flash');
+
+    return {
+      providerType: 'vertex-ai',
+      provider: envProvider || 'vertex-ai',
+      baseURL: '',
+      apiKey: '',
+      defaultModel: vertexDefaultModel,
+      models: envModels || [vertexDefaultModel, 'gemini-2.0-pro', 'gemini-2.5-flash'],
+    };
   }
 }

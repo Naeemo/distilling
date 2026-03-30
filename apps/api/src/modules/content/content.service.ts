@@ -29,7 +29,10 @@ export class ContentService {
     });
 
     if (existing) {
-      throw new BadRequestException('Content with this URL already exists');
+      return {
+        ...existing,
+        isExisting: true,
+      };
     }
 
     // 抓取网页内容
@@ -61,7 +64,10 @@ export class ContentService {
     // 创建初始复习计划
     await this.createInitialReview(userId, content.id);
 
-    return content;
+    return {
+      ...content,
+      isExisting: false,
+    };
   }
 
   async createFromText(userId: string, title: string, contentText: string, tagIds?: string[]) {
@@ -286,6 +292,16 @@ export class ContentService {
       );
       const siteName = $('meta[property="og:site_name"]').attr('content');
 
+      if (this.isWechatArticle(url)) {
+        return this.fetchWithBrowserFallback(url, {
+          title: $('meta[property="og:title"]').attr('content') || title,
+          author: $('#js_name').text().trim() || author,
+          publishDate,
+          coverImage,
+          siteName,
+        });
+      }
+
       // 使用 Readability 提取正文
       let contentText = '';
       try {
@@ -308,6 +324,16 @@ export class ContentService {
         .trim()
         .substring(0, 50000); // 限制长度
 
+      if (contentText.length < 500) {
+        return this.fetchWithBrowserFallback(url, {
+          title,
+          author,
+          publishDate,
+          coverImage,
+          siteName,
+        });
+      }
+
       return {
         title: title.trim(),
         contentText,
@@ -319,8 +345,48 @@ export class ContentService {
         },
       };
     } catch (error: any) {
-      throw new BadRequestException(`Failed to fetch URL: ${error.message}`);
+      try {
+        return await this.fetchWithBrowserFallback(url);
+      } catch {
+        throw new BadRequestException(`Failed to fetch URL: ${error.message}`);
+      }
     }
+  }
+
+  private isWechatArticle(url: string): boolean {
+    return url.includes('mp.weixin.qq.com');
+  }
+
+  private async fetchWithBrowserFallback(
+    url: string,
+    metadataFallback?: {
+      title?: string;
+      author?: string | null;
+      publishDate?: string;
+      coverImage?: string;
+      siteName?: string;
+    },
+  ) {
+    const extracted = await this.browserService.extractContent(url);
+    const contentText = extracted.content
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+      .substring(0, 50000);
+
+    if (!contentText) {
+      throw new Error('No content extracted from browser fallback');
+    }
+
+    return {
+      title: extracted.title?.trim() || metadataFallback?.title?.trim() || 'Untitled',
+      contentText,
+      metadata: {
+        author: extracted.author || metadataFallback?.author || null,
+        publishDate: metadataFallback?.publishDate,
+        coverImage: metadataFallback?.coverImage,
+        siteName: metadataFallback?.siteName,
+      },
+    };
   }
 
   async quickAdd(userId: string, shareText: string, tags?: string[], note?: string) {

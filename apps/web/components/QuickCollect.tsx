@@ -1,14 +1,24 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { useContentStore } from '@/stores/content';
+import type { Content } from '@/types';
 
 interface QuickCollectProps {
   onSuccess?: () => void;
 }
+
+type SubmitNotice = {
+  tone: 'info' | 'error';
+  message: string;
+} | null;
+
+type CollectedContent = Content & {
+  isExisting?: boolean;
+};
 
 // 检测文本类型
 function detectInputType(text: string): 'url' | 'wechat' | 'text' {
@@ -77,44 +87,70 @@ function extractTitle(text: string): string {
 }
 
 export function QuickCollect({ onSuccess }: QuickCollectProps) {
+  const router = useRouter();
   const [inputText, setInputText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputMode, setInputMode] = useState<'auto' | 'url' | 'text'>('auto');
+  const [notice, setNotice] = useState<SubmitNotice>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const addContent = useContentStore((state) => state.addContent);
+
+  const handleCollectedContent = async (content: CollectedContent) => {
+    setInputText('');
+    await onSuccess?.();
+
+    if (content.isExisting) {
+      setNotice({
+        tone: 'info',
+        message: '这个链接已经在知识库里了，已为你打开现有条目。',
+      });
+      router.push(`/reader/${content.id}`);
+      return;
+    }
+
+    setNotice({
+      tone: 'info',
+      message: '内容已保存。',
+    });
+  };
 
   const handleSubmit = async () => {
     if (!inputText.trim()) return;
 
     setIsSubmitting(true);
+    setNotice(null);
     try {
       const type = inputMode === 'auto' ? detectInputType(inputText) : inputMode;
       
       if (type === 'url' || type === 'wechat') {
         // URL 模式 - 直接创建链接
         const url = inputText.trim();
-        const content = await api.contents.create(url);
-        addContent(content);
+        const content = await api.contents.create(url) as CollectedContent;
+        await handleCollectedContent(content);
       } else {
         // 文本模式
         const wechatData = parseWechatShare(inputText);
         
         if (wechatData && wechatData.url.includes('mp.weixin.qq.com')) {
           // 微信分享文本 - 提取链接并创建
-          const content = await api.contents.create(wechatData.url);
-          addContent(content);
+          const content = await api.contents.create(wechatData.url) as CollectedContent;
+          await handleCollectedContent(content);
         } else {
           // 纯文本/Markdown 模式
           const title = extractTitle(inputText);
-          const content = await api.contents.createText(title, inputText.trim());
-          addContent(content);
+          await api.contents.createText(title, inputText.trim());
+          setInputText('');
+          setNotice({
+            tone: 'info',
+            message: '内容已保存。',
+          });
+          await onSuccess?.();
         }
       }
-      
-      setInputText('');
-      onSuccess?.();
     } catch (error: any) {
-      alert(error.message || '添加失败，请重试');
+      setNotice({
+        tone: 'error',
+        message: error.message || '添加失败，请重试',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -201,6 +237,18 @@ export function QuickCollect({ onSuccess }: QuickCollectProps) {
               {currentType === 'text' && (
                 <span className="text-xs">将直接保存为笔记</span>
               )}
+            </div>
+          )}
+
+          {notice && (
+            <div
+              className={`rounded-lg px-3 py-2 text-sm ${
+                notice.tone === 'error'
+                  ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+                  : 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+              }`}
+            >
+              {notice.message}
             </div>
           )}
 

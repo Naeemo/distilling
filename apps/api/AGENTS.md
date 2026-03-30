@@ -46,6 +46,7 @@ pnpm --filter @infodigest/api test
 - `type-check` runs `prisma generate` first; expect generated client output to matter for types.
 - Prisma schema changes ripple into multiple modules quickly.
 - Ingestion changes often affect web, extension, and docs at the same time.
+- LLM runtime config falls back to `LLM_*` env vars when database-backed system config rows are absent; use that path for local Ollama development.
 
 ## When to update docs
 

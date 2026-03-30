@@ -26,13 +26,16 @@ export class AiService {
    */
   private async generateWithConfig(
     prompt: string,
-    options: { model?: string; maxTokens?: number; temperature?: number }
+    options: { model?: string; maxTokens?: number; temperature?: number; systemPrompt?: string }
   ): Promise<{ text: string; usageMetadata?: { totalTokenCount?: number } }> {
     const config = await this.systemConfig.getLLMConfig();
 
     if (config.providerType === 'vertex-ai') {
       // 使用 Vertex AI
-      return this.vertexAi.generateText(prompt, {
+      const vertexPrompt = options.systemPrompt
+        ? `${options.systemPrompt}\n\n${prompt}`
+        : prompt;
+      return this.vertexAi.generateText(vertexPrompt, {
         model: options.model || config.defaultModel,
         maxTokens: options.maxTokens,
         temperature: options.temperature,
@@ -49,26 +52,55 @@ export class AiService {
   private async generateWithOpenAICompatible(
     prompt: string,
     config: { baseURL: string; apiKey: string; defaultModel: string },
-    options: { model?: string; maxTokens?: number; temperature?: number }
+    options: { model?: string; maxTokens?: number; temperature?: number; systemPrompt?: string }
   ): Promise<{ text: string; usageMetadata?: { totalTokenCount?: number } }> {
-    const response = await fetch(`${config.baseURL}/chat/completions`, {
+    const requestBody = {
+      model: options.model || config.defaultModel,
+      messages: [
+        {
+          role: 'system',
+          content: options.systemPrompt || 'You are a helpful assistant that summarizes content accurately and concisely.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: options.maxTokens,
+      temperature: options.temperature,
+    } as Record<string, unknown>;
+
+    if (this.shouldDisableReasoning(config.baseURL, String(requestBody.model))) {
+      requestBody.reasoning_effort = 'none';
+      requestBody.reasoning = { effort: 'none' };
+    }
+
+    let data = await this.callOpenAICompatible(config.baseURL, config.apiKey, requestBody);
+    let text = this.extractOpenAICompatibleText(data);
+
+    const reasoning = data?.choices?.[0]?.message?.reasoning;
+    const configuredMaxTokens = options.maxTokens ?? 512;
+    if (!text && reasoning && configuredMaxTokens < 1024) {
+      data = await this.callOpenAICompatible(config.baseURL, config.apiKey, {
+        ...requestBody,
+        max_tokens: Math.max(configuredMaxTokens * 4, 1024),
+      });
+      text = this.extractOpenAICompatibleText(data);
+    }
+
+    const totalTokenCount = data.usage?.total_tokens || this.estimateTokens(prompt + text);
+
+    return {
+      text,
+      usageMetadata: { totalTokenCount },
+    };
+  }
+
+  private async callOpenAICompatible(baseURL: string, apiKey: string, body: Record<string, unknown>) {
+    const response = await fetch(`${baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: options.model || config.defaultModel,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that summarizes content accurately and concisely.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: options.maxTokens,
-        temperature: options.temperature,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -76,14 +108,38 @@ export class AiService {
       throw new Error(`LLM API error: ${error}`);
     }
 
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || '';
-    const totalTokenCount = data.usage?.total_tokens || this.estimateTokens(prompt + text);
+    return response.json();
+  }
 
-    return {
-      text,
-      usageMetadata: { totalTokenCount },
-    };
+  private extractOpenAICompatibleText(data: any): string {
+    const content = data?.choices?.[0]?.message?.content;
+
+    if (typeof content === 'string') {
+      return content.trim();
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => {
+          if (typeof part === 'string') {
+            return part;
+          }
+          if (typeof part?.text === 'string') {
+            return part.text;
+          }
+          return '';
+        })
+        .join('')
+        .trim();
+    }
+
+    return '';
+  }
+
+  private shouldDisableReasoning(baseURL: string, model: string): boolean {
+    const normalizedBaseUrl = baseURL.toLowerCase();
+    const normalizedModel = model.toLowerCase();
+    return normalizedBaseUrl.includes('11434') || normalizedModel.includes('qwen');
   }
 
   /**
@@ -148,8 +204,12 @@ export class AiService {
         model,
         maxTokens,
         temperature: 0.3,
+        systemPrompt: 'You are a helpful assistant that summarizes content accurately and concisely.',
       });
       summaryText = result.text;
+      if (!summaryText.trim()) {
+        throw new Error('LLM returned empty summary text');
+      }
       tokensUsed =
         result.usageMetadata?.totalTokenCount || this.estimateTokens(prompt + summaryText);
 
@@ -198,6 +258,13 @@ export class AiService {
       where: { contentId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async generateText(
+    prompt: string,
+    options: { model?: string; maxTokens?: number; temperature?: number; systemPrompt?: string } = {},
+  ): Promise<{ text: string; usageMetadata?: { totalTokenCount?: number } }> {
+    return this.generateWithConfig(prompt, options);
   }
 
   private getCacheKey(content: string, type: string): string {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { VertexAiService } from './vertex-ai.service';
+import { AiService } from './ai.service';
 
 export interface ArticleAnalysisResult {
   qualityRating: 'A' | 'B' | 'C' | 'D';
@@ -33,7 +33,7 @@ export interface ArticleAnalysisResult {
 
 @Injectable()
 export class ArticleAnalysisService {
-  constructor(private vertexAi: VertexAiService) {}
+  constructor(private readonly aiService: AiService) {}
 
   /**
    * 分析文章质量
@@ -41,15 +41,13 @@ export class ArticleAnalysisService {
   async analyzeArticle(title: string, content: string): Promise<ArticleAnalysisResult> {
     const prompt = this.buildAnalysisPrompt(title, content);
     
-    const response = await this.vertexAi.chatCompletion([
-      { role: 'system', content: this.getSystemPrompt() },
-      { role: 'user', content: prompt }
-    ], {
-      model: 'gemini-2.0-flash',
+    const response = await this.aiService.generateText(prompt, {
       temperature: 0.3,
+      maxTokens: 2000,
+      systemPrompt: this.getSystemPrompt(),
     });
 
-    return this.parseAnalysisResponse(response);
+    return this.parseAnalysisResponse(response.text);
   }
 
   /**
@@ -226,15 +224,13 @@ ${content.substring(0, 8000)}
 - C: 一般，快速浏览即可
 - D: 水文/营销/情绪，建议跳过`;
 
-    const response = await this.vertexAi.chatCompletion([
-      { role: 'system', content: '你是文章质量评估专家，快速给出评级。' },
-      { role: 'user', content: prompt }
-    ], {
-      model: 'gemini-2.0-flash',
+    const response = await this.aiService.generateText(prompt, {
       temperature: 0.3,
+      maxTokens: 300,
+      systemPrompt: '你是文章质量评估专家，快速给出评级。',
     });
 
-    const lines = response.split('\n');
+    const lines = response.text.split('\n');
     const scoreLine = lines.find(l => l.includes('评级:'));
     const reasonLine = lines.find(l => l.includes('原因:'));
 
