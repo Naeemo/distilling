@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
-import { ContentStatus } from '@prisma/client';
+import { ContentStatus, Prisma } from '@prisma/client';
 import { BrowserService } from '../browser/browser.service';
 import { AiService } from '../ai/ai.service';
 import { CreateImportedContentDto } from './dto';
@@ -758,6 +758,14 @@ export class ContentService {
     }
   }
 
+  private toJsonValue(value?: Record<string, unknown>) {
+    if (!value) {
+      return undefined;
+    }
+
+    return value as Prisma.InputJsonValue;
+  }
+
   private async findReusableContentByUrl(url: string) {
     return this.prisma.content.findFirst({
       where: {
@@ -841,13 +849,13 @@ export class ContentService {
         rawHtml: reusable.rawHtml,
         summary: reusable.summary,
         sourceType: (options.overrides?.sourceType || reusable.sourceType) as any,
-        metadata: {
+        metadata: this.toJsonValue({
           ...(reusable.metadata && typeof reusable.metadata === 'object'
             ? reusable.metadata as Record<string, unknown>
             : {}),
           ...(options.overrides?.metadata ?? {}),
           ...(options.extraContentMetadata ?? {}),
-        },
+        }),
       },
     });
 
@@ -907,7 +915,7 @@ export class ContentService {
         status,
         title: input.title,
         url: input.url ?? null,
-        metadata: metadata ?? undefined,
+        metadata: this.toJsonValue(metadata),
       },
     });
   }
@@ -927,7 +935,7 @@ export class ContentService {
         contentId: update.contentId,
         title: update.title,
         status: update.status,
-        metadata: update.metadata,
+        metadata: this.toJsonValue(update.metadata),
       },
     });
   }
