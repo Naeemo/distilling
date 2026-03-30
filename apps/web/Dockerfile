@@ -16,9 +16,12 @@ WORKDIR /app/apps/web
 
 COPY --from=deps /app/apps/web/node_modules ./node_modules
 COPY apps/web ./
+COPY apps/api/prisma ../api/prisma
 
 ARG NEXT_PUBLIC_API_URL
+ARG BETTER_AUTH_SECRET=build-time-secret
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
 ENV NODE_ENV=production
 
 RUN pnpm build
