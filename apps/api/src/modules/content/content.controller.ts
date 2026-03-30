@@ -86,6 +86,18 @@ export class ContentController {
     });
   }
 
+  @Get('submissions')
+  @ApiOperation({ summary: '获取添加记录时间轴' })
+  async findSubmissions(
+    @Request() req,
+    @Query('limit') limit?: string,
+  ) {
+    return this.contentService.findSubmissions(
+      req.user.userId,
+      limit ? parseInt(limit, 10) : 100,
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '获取内容详情' })
   async findOne(@Request() req, @Param('id') id: string) {

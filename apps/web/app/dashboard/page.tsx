@@ -61,11 +61,19 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="mx-auto max-w-6xl p-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">知识库</h1>
-        <p className="text-gray-500 dark:text-gray-400">管理您的所有内容和笔记</p>
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.22em] text-gray-400 dark:text-gray-500">Workspace</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-950 dark:text-white">知识库</h1>
+          <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            从这里提交内容、查看当前阅读状态，并继续进入阅读与复习。
+          </p>
+        </div>
+        <div className="rounded-2xl border border-gray-200/80 bg-white/80 px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-300">
+          保存后会自动开始抓取、复用与摘要。
+        </div>
       </div>
 
       {/* Quick Collect - 支持链接、文本、Markdown */}

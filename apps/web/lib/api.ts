@@ -96,6 +96,8 @@ export const api = {
       }),
     archive: (id: string) =>
       fetchWithAuth(`/contents/${id}`, { method: 'DELETE' }),
+    submissions: (params?: { limit?: string }) =>
+      fetchWithAuth('/contents/submissions', { params }),
   },
 
   tags: {
