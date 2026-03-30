@@ -13,6 +13,10 @@ type ChromeRuntime = {
   lastError?: unknown;
 };
 
+function shouldLogExtensionSync() {
+  return process.env.NEXT_PUBLIC_DEBUG_EXTENSION_SYNC === 'true';
+}
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -51,12 +55,13 @@ function syncTokenToExtension(token: string | null) {
         token: token
       }, (response?: { success?: boolean; message?: string }) => {
         if (extensionRuntime.lastError) {
-          // 扩展未安装或未启用，静默失败
-          console.log('[InfoDigest] 扩展未安装或通信失败');
+          if (shouldLogExtensionSync()) {
+            console.debug('[InfoDigest] 扩展未安装或通信失败');
+          }
           return;
         }
-        if (response?.success) {
-          console.log('[InfoDigest] Token 已同步到扩展');
+        if (response?.success && shouldLogExtensionSync()) {
+          console.debug('[InfoDigest] Token 已同步到扩展');
         }
       });
     } else {
@@ -68,8 +73,9 @@ function syncTokenToExtension(token: string | null) {
       });
     }
   } catch (error) {
-    // 扩展未安装，静默失败
-    console.log('[InfoDigest] 扩展通信失败（可能未安装）');
+    if (shouldLogExtensionSync()) {
+      console.debug('[InfoDigest] 扩展通信失败（可能未安装）');
+    }
   }
 }
 

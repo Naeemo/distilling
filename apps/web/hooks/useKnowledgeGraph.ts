@@ -97,6 +97,7 @@ export function useKnowledgeGraph(centerContentId?: string) {
     {
       revalidateOnFocus: false,
       dedupingInterval: 5000,
+      shouldRetryOnError: false,
     }
   );
 
@@ -118,6 +119,7 @@ export function useContentPosition(contentId: string) {
     },
     {
       revalidateOnFocus: false,
+      shouldRetryOnError: false,
     }
   );
 
@@ -145,6 +147,7 @@ export function useContentRelations(contentId: string, options?: {
     },
     {
       revalidateOnFocus: false,
+      shouldRetryOnError: false,
     }
   );
 
@@ -166,6 +169,7 @@ export function useContentInsight(contentId: string) {
     },
     {
       revalidateOnFocus: false,
+      shouldRetryOnError: false,
     }
   );
 

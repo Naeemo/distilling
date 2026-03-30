@@ -18,8 +18,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitLogin = async () => {
     setIsLoading(true);
     setError('');
 
@@ -34,6 +33,11 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitLogin();
   };
 
   return (
@@ -74,6 +78,7 @@ export default function LoginPage() {
                 type="email"
                 aria-label="登录邮箱"
                 data-testid="login-email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
@@ -85,6 +90,7 @@ export default function LoginPage() {
                 type="password"
                 aria-label="登录密码"
                 data-testid="login-password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -98,10 +104,11 @@ export default function LoginPage() {
               )}
 
               <Button
-                type="submit"
+                type="button"
                 className="w-full"
                 isLoading={isLoading}
                 data-testid="login-submit"
+                onClick={() => void submitLogin()}
               >
                 登录
               </Button>

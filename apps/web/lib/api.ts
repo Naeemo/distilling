@@ -6,8 +6,35 @@ interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
 }
 
+function getStoredAccessToken() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const directToken = localStorage.getItem('accessToken');
+  if (directToken) {
+    return directToken;
+  }
+
+  const persistedAuth = localStorage.getItem('auth-storage');
+  if (!persistedAuth) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(persistedAuth) as {
+      state?: { accessToken?: string | null };
+      accessToken?: string | null;
+    };
+
+    return parsed.state?.accessToken ?? parsed.accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchWithAuth(url: string, config: RequestConfig = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const token = getStoredAccessToken();
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -35,7 +62,9 @@ async function fetchWithAuth(url: string, config: RequestConfig = {}) {
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || 'Request failed');
+    const requestError = new Error(error.message || 'Request failed') as Error & { status?: number };
+    requestError.status = response.status;
+    throw requestError;
   }
   
   return response.json();
@@ -146,10 +175,15 @@ export const api = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
+          'Authorization': `Bearer ${getStoredAccessToken() || ''}`,
         },
         body: JSON.stringify({ contentId, type }),
       });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(error.message || 'Request failed');
+      }
       
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');

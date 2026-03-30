@@ -143,6 +143,20 @@ export class ContentService {
     };
   }
 
+  private normalizeMetadataUrl(urlValue?: string, baseUrl?: string) {
+    if (!urlValue) return urlValue;
+
+    try {
+      const normalized = new URL(urlValue, baseUrl);
+      if (normalized.protocol === 'http:') {
+        normalized.protocol = 'https:';
+      }
+      return normalized.toString();
+    } catch {
+      return urlValue.replace(/^http:\/\//i, 'https://');
+    }
+  }
+
   async findOne(userId: string, id: string) {
     const content = await this.prisma.content.findFirst({
       where: { id, userId },
@@ -265,8 +279,11 @@ export class ContentService {
                      $('meta[property="article:author"]').attr('content');
       const publishDate = $('meta[property="article:published_time"]').attr('content') ||
                           $('meta[name="publishdate"]').attr('content');
-      const coverImage = $('meta[property="og:image"]').attr('content') ||
-                         $('meta[name="twitter:image"]').attr('content');
+      const coverImage = this.normalizeMetadataUrl(
+        $('meta[property="og:image"]').attr('content') ||
+          $('meta[name="twitter:image"]').attr('content'),
+        url,
+      );
       const siteName = $('meta[property="og:site_name"]').attr('content');
 
       // 使用 Readability 提取正文

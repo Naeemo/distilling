@@ -16,7 +16,7 @@ import { ArticleAnalysisService } from './article-analysis.service';
 import { SummarizeDto, AnalyzeArticleDto } from './dto';
 
 @ApiTags('AI')
-@Controller('api/v1/ai')
+@Controller('ai')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AiController {

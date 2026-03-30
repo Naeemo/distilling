@@ -4,8 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { KnowledgeGraph } from '@/components/knowledge-graph';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { Brain, Network, Lightbulb, Compass } from 'lucide-react';
 
 export default function KnowledgeGraphPage() {
@@ -21,11 +21,15 @@ export default function KnowledgeGraphPage() {
             Visualize connections between your content and understand information context
           </p>
         </div>
-        <Link href="/knowledge-graph/explore">
-          <Button className="flex items-center gap-2">
-            <Compass className="w-4 h-4" />
-            互动探索
-          </Button>
+        <Link
+          href="/knowledge-graph/explore"
+          className={cn(
+            'inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200',
+            'hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+          )}
+        >
+          <Compass className="w-4 h-4" />
+          互动探索
         </Link>
       </div>
 

@@ -20,8 +20,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitRegistration = async () => {
     setIsLoading(true);
     setError('');
 
@@ -48,6 +47,11 @@ export default function RegisterPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitRegistration();
   };
 
   return (
@@ -88,6 +92,7 @@ export default function RegisterPage() {
                 type="text"
                 aria-label="注册昵称"
                 data-testid="register-name"
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="您的昵称"
@@ -98,6 +103,7 @@ export default function RegisterPage() {
                 type="email"
                 aria-label="注册邮箱"
                 data-testid="register-email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
@@ -109,6 +115,7 @@ export default function RegisterPage() {
                 type="password"
                 aria-label="注册密码"
                 data-testid="register-password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -120,6 +127,7 @@ export default function RegisterPage() {
                 type="password"
                 aria-label="确认注册密码"
                 data-testid="register-confirm-password"
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
@@ -133,10 +141,11 @@ export default function RegisterPage() {
               )}
 
               <Button
-                type="submit"
+                type="button"
                 className="w-full"
                 isLoading={isLoading}
                 data-testid="register-submit"
+                onClick={() => void submitRegistration()}
               >
                 注册
               </Button>

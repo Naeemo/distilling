@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsString, IsOptional, IsNumber, IsBoolean, IsEnum, IsObject } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { RelationType } from '@prisma/client';
@@ -65,10 +66,6 @@ export class CreateRelationDto {
 }
 
 export class QueryRelationsDto {
-  @ApiProperty({ description: '文章ID' })
-  @IsString()
-  contentId: string;
-
   @ApiProperty({ description: '关联类型过滤', required: false, enum: RelationType })
   @IsOptional()
   @IsEnum(RelationType)
@@ -76,6 +73,7 @@ export class QueryRelationsDto {
 
   @ApiProperty({ description: '最小关联强度', required: false, minimum: 0, maximum: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   minStrength?: number;
 }
@@ -93,6 +91,7 @@ export class GraphQueryDto {
 
   @ApiProperty({ description: '最大节点数', required: false, default: 50 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   maxNodes?: number;
 

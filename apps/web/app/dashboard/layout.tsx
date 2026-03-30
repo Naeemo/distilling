@@ -24,7 +24,7 @@ export default function DashboardLayout({
     clearAuth();
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    router.push('/');
+    window.location.assign('/login');
   };
 
   if (isLoading) {
