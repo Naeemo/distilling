@@ -30,6 +30,7 @@ model User {
   highlights Highlight[]
   tags       Tag[]
   reviews    Review[]
+  submissions ContentSubmission[]
   insights   ContentInsight[]
   relations  ContentRelation[]
   clusters   TopicCluster[]
@@ -129,6 +130,7 @@ model Content {
   highlights Highlight[]
   tags       ContentTag[]
   summaries  Summary[]
+  submissions ContentSubmission[]
   reviews    Review[]
   insights   ContentInsight?
   relationsA ContentRelation[] @relation("ContentA")
@@ -154,6 +156,46 @@ enum SourceType {
   RSS
   NEWSLETTER
   MANUAL
+}
+
+model ContentSubmission {
+  id                    String                  @id @default(cuid())
+  userId                String
+  contentId             String?
+  duplicateOfSubmissionId String?
+  source                ContentSubmissionSource
+  status                ContentSubmissionStatus @default(FETCHING)
+  title                 String
+  url                   String?
+  errorMessage          String?
+  metadata              Json?
+  submittedAt           DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  user                  User                    @relation(fields: [userId], references: [id])
+  content               Content?                @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  duplicateOfSubmission ContentSubmission?      @relation("DuplicateSubmission", fields: [duplicateOfSubmissionId], references: [id], onDelete: SetNull)
+  duplicateSubmissions  ContentSubmission[]     @relation("DuplicateSubmission")
+
+  @@index([userId, submittedAt])
+  @@index([contentId])
+  @@index([duplicateOfSubmissionId])
+  @@map("content_submissions")
+}
+
+enum ContentSubmissionSource {
+  QUICK_PASTE
+  BROWSER_EXTENSION
+  IOS_SHORTCUT
+}
+
+enum ContentSubmissionStatus {
+  FETCHING
+  REUSING
+  SUMMARIZING
+  DIGESTED
+  DUPLICATE
+  FAILED
 }
 
 // ==================== AI摘要模块 ====================

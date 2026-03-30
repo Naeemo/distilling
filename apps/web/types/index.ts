@@ -84,3 +84,30 @@ export interface Review {
   easeFactor: number;
   repetitions: number;
 }
+
+export interface ContentSubmission {
+  id: string;
+  contentId: string | null;
+  duplicateOfSubmissionId: string | null;
+  source: 'QUICK_PASTE' | 'BROWSER_EXTENSION' | 'IOS_SHORTCUT';
+  status: 'FETCHING' | 'REUSING' | 'SUMMARIZING' | 'DIGESTED' | 'DUPLICATE' | 'FAILED';
+  title: string;
+  url: string | null;
+  errorMessage: string | null;
+  metadata: Record<string, unknown> | null;
+  submittedAt: string;
+  updatedAt: string;
+  content?: {
+    id: string;
+    status: Content['status'];
+    summary: string | null;
+    title: string;
+    url: string | null;
+  } | null;
+  duplicateOfSubmission?: {
+    id: string;
+    submittedAt: string;
+    title: string;
+    contentId: string | null;
+  } | null;
+}

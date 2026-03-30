@@ -2,12 +2,14 @@ import {
   Injectable, 
   NotFoundException, 
   BadRequestException,
-  Inject 
+  Inject,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import { ContentStatus } from '@prisma/client';
 import { BrowserService } from '../browser/browser.service';
+import { AiService } from '../ai/ai.service';
 import { CreateImportedContentDto } from './dto';
 import Redis from 'ioredis';
 import axios from 'axios';
@@ -15,12 +17,24 @@ import * as cheerio from 'cheerio';
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 
+type SubmissionSource = 'QUICK_PASTE' | 'BROWSER_EXTENSION' | 'IOS_SHORTCUT';
+type SubmissionStatus =
+  | 'FETCHING'
+  | 'REUSING'
+  | 'SUMMARIZING'
+  | 'DIGESTED'
+  | 'DUPLICATE'
+  | 'FAILED';
+
 @Injectable()
 export class ContentService {
+  private readonly logger = new Logger(ContentService.name);
+
   constructor(
     private prisma: PrismaService,
     @Inject(REDIS_CLIENT) private redis: Redis,
     private browserService: BrowserService,
+    private readonly aiService: AiService,
   ) {}
 
   async createFromUrl(userId: string, url: string, tagIds?: string[]) {
@@ -30,70 +44,126 @@ export class ContentService {
     });
 
     if (existing) {
+      const duplicateSubmission = await this.createDuplicateSubmission(
+        userId,
+        existing,
+        'QUICK_PASTE',
+      );
+
       return {
         ...existing,
         isExisting: true,
+        submissionId: duplicateSubmission.id,
+        duplicateOfSubmissionId: duplicateSubmission.duplicateOfSubmissionId,
       };
     }
 
-    // 抓取网页内容
-    const { title, contentText, metadata } = await this.fetchWebContent(url);
-
-    // 创建内容
-    const content = await this.prisma.content.create({
-      data: {
-        userId,
+    const reusable = await this.findReusableContentByUrl(url);
+    const submission = await this.createSubmissionRecord(
+      userId,
+      {
+        title: reusable?.title || this.getSubmissionTitle(url),
         url,
-        title,
-        contentText,
-        metadata,
-        sourceType: 'WEB',
       },
-    });
+      'QUICK_PASTE',
+      reusable ? 'REUSING' : 'FETCHING',
+    );
 
-    // 添加标签关联
-    if (tagIds && tagIds.length > 0) {
-      await this.prisma.contentTag.createMany({
-        data: tagIds.map((tagId) => ({
-          contentId: content.id,
-          tagId,
-        })),
-        skipDuplicates: true,
+    try {
+      if (reusable) {
+        return this.materializeReusableContent(userId, reusable, submission.id, {
+          source: 'QUICK_PASTE',
+          tagIds,
+        });
+      }
+
+      const { title, contentText, metadata } = await this.fetchWebContent(url);
+      const content = await this.prisma.content.create({
+        data: {
+          userId,
+          url,
+          title,
+          contentText,
+          metadata,
+          sourceType: 'WEB',
+        },
       });
+
+      await this.attachTagIds(content.id, tagIds);
+      await this.createInitialReview(userId, content.id);
+      await this.updateSubmissionRecord(submission.id, {
+        contentId: content.id,
+        title: content.title,
+        status: 'SUMMARIZING',
+        metadata: {
+          contentMetadata: metadata,
+        },
+      });
+      this.triggerAutoSummary(content.id, submission.id);
+
+      return {
+        ...content,
+        isExisting: false,
+        submissionId: submission.id,
+      };
+    } catch (error) {
+      await this.markSubmissionFailed(submission.id, error);
+      throw error;
     }
-
-    // 创建初始复习计划
-    await this.createInitialReview(userId, content.id);
-
-    return {
-      ...content,
-      isExisting: false,
-    };
   }
 
   async createFromText(userId: string, title: string, contentText: string, tagIds?: string[]) {
-    const content = await this.prisma.content.create({
-      data: {
-        userId,
+    const reusable = await this.findReusableContentByText(contentText);
+    const submission = await this.createSubmissionRecord(
+      userId,
+      {
         title,
-        contentText,
-        sourceType: 'MANUAL',
+        url: null,
       },
-    });
+      'QUICK_PASTE',
+      reusable ? 'REUSING' : 'SUMMARIZING',
+    );
 
-    if (tagIds && tagIds.length > 0) {
-      await this.prisma.contentTag.createMany({
-        data: tagIds.map((tagId) => ({
-          contentId: content.id,
-          tagId,
-        })),
-        skipDuplicates: true,
+    try {
+      if (reusable) {
+        return this.materializeReusableContent(userId, reusable, submission.id, {
+          source: 'QUICK_PASTE',
+          tagIds,
+          overrides: {
+            title,
+            url: null,
+            sourceType: 'MANUAL',
+            contentText,
+          },
+        });
+      }
+
+      const content = await this.prisma.content.create({
+        data: {
+          userId,
+          title,
+          contentText,
+          sourceType: 'MANUAL',
+        },
       });
+
+      await this.attachTagIds(content.id, tagIds);
+      await this.createInitialReview(userId, content.id);
+      await this.updateSubmissionRecord(submission.id, {
+        contentId: content.id,
+        title: content.title,
+        status: 'SUMMARIZING',
+      });
+      this.triggerAutoSummary(content.id, submission.id);
+
+      return {
+        ...content,
+        submissionId: submission.id,
+      };
+    } catch (error) {
+      await this.markSubmissionFailed(submission.id, error);
+      throw error;
     }
-
-    await this.createInitialReview(userId, content.id);
-
-    return content;
   }
 
   async createImported(userId: string, data: CreateImportedContentDto) {
@@ -102,68 +172,87 @@ export class ContentService {
     });
 
     if (existing) {
+      const duplicateSubmission = await this.createDuplicateSubmission(
+        userId,
+        existing,
+        'BROWSER_EXTENSION',
+      );
+
       return {
         ...existing,
         isExisting: true,
+        submissionId: duplicateSubmission.id,
+        duplicateOfSubmissionId: duplicateSubmission.duplicateOfSubmissionId,
       };
     }
 
-    const content = await this.prisma.content.create({
-      data: {
-        userId,
+    const reusable = await this.findReusableContentByUrl(data.url);
+    const submission = await this.createSubmissionRecord(
+      userId,
+      {
+        title: reusable?.title || data.title,
         url: data.url,
-        title: data.title,
-        contentText: data.contentText,
-        sourceType: 'WEB',
-        metadata: {
-          author: data.author ?? null,
-          publishDate: data.publishTime ?? null,
-          coverImage: data.coverImage ?? null,
-          siteName: 'WeChat',
-        },
       },
-    });
+      'BROWSER_EXTENSION',
+      reusable ? 'REUSING' : 'SUMMARIZING',
+    );
 
-    if (data.tags && data.tags.length > 0) {
-      const tags = await Promise.all(
-        data.tags.map(async (name) => {
-          const existingTag = await this.prisma.tag.findFirst({
-            where: { userId, name },
-            select: { id: true },
-          });
-
-          if (existingTag) {
-            return existingTag.id;
-          }
-
-          const createdTag = await this.prisma.tag.create({
-            data: {
-              userId,
-              name,
-              color: '#10b981',
+    try {
+      if (reusable) {
+        return this.materializeReusableContent(userId, reusable, submission.id, {
+          source: 'BROWSER_EXTENSION',
+          tagNames: data.tags,
+          overrides: {
+            title: data.title,
+            url: data.url,
+            metadata: {
+              author: data.author ?? null,
+              publishDate: data.publishTime ?? null,
+              coverImage: data.coverImage ?? null,
+              siteName: 'WeChat',
             },
-            select: { id: true },
-          });
+          },
+        });
+      }
 
-          return createdTag.id;
-        }),
-      );
-
-      await this.prisma.contentTag.createMany({
-        data: tags.map((tagId) => ({
-          contentId: content.id,
-          tagId,
-        })),
-        skipDuplicates: true,
+      const metadata = {
+        author: data.author ?? null,
+        publishDate: data.publishTime ?? null,
+        coverImage: data.coverImage ?? null,
+        siteName: 'WeChat',
+      };
+      const content = await this.prisma.content.create({
+        data: {
+          userId,
+          url: data.url,
+          title: data.title,
+          contentText: data.contentText,
+          sourceType: 'WEB',
+          metadata,
+        },
       });
+
+      await this.attachTagNames(userId, content.id, data.tags);
+      await this.createInitialReview(userId, content.id);
+      await this.updateSubmissionRecord(submission.id, {
+        contentId: content.id,
+        title: content.title,
+        status: 'SUMMARIZING',
+        metadata: {
+          contentMetadata: metadata,
+        },
+      });
+      this.triggerAutoSummary(content.id, submission.id);
+
+      return {
+        ...content,
+        isExisting: false,
+        submissionId: submission.id,
+      };
+    } catch (error) {
+      await this.markSubmissionFailed(submission.id, error);
+      throw error;
     }
-
-    await this.createInitialReview(userId, content.id);
-
-    return {
-      ...content,
-      isExisting: false,
-    };
   }
 
   async findAll(userId: string, params: {
@@ -218,6 +307,33 @@ export class ContentService {
       page,
       limit,
     };
+  }
+
+  async findSubmissions(userId: string, limit = 100) {
+    return this.prisma.contentSubmission.findMany({
+      where: { userId },
+      orderBy: { submittedAt: 'desc' },
+      take: limit,
+      include: {
+        content: {
+          select: {
+            id: true,
+            status: true,
+            summary: true,
+            title: true,
+            url: true,
+          },
+        },
+        duplicateOfSubmission: {
+          select: {
+            id: true,
+            submittedAt: true,
+            title: true,
+            contentId: true,
+          },
+        },
+      },
+    });
   }
 
   private normalizeMetadataUrl(urlValue?: string, baseUrl?: string) {
@@ -474,6 +590,13 @@ export class ContentService {
     });
 
     if (existing) {
+      const duplicateSubmission = await this.createDuplicateSubmission(
+        userId,
+        existing,
+        'IOS_SHORTCUT',
+        { note },
+      );
+
       // 如果已存在，返回已有内容信息
       return {
         success: true,
@@ -482,64 +605,88 @@ export class ContentService {
         url: existing.url,
         message: 'Content already exists',
         isExisting: true,
+        submissionId: duplicateSubmission.id,
+        duplicateOfSubmissionId: duplicateSubmission.duplicateOfSubmissionId,
       };
     }
 
-    // 抓取网页内容
-    const { title, contentText, metadata } = await this.fetchWebContent(url);
-
-    // 创建内容
-    const content = await this.prisma.content.create({
-      data: {
-        userId,
+    const reusable = await this.findReusableContentByUrl(url);
+    const submission = await this.createSubmissionRecord(
+      userId,
+      {
+        title: reusable?.title || this.getSubmissionTitle(url),
         url,
-        title,
-        contentText,
-        metadata: {
-          ...metadata,
-          quickAddNote: note,
-          quickAddSource: 'ios_shortcut',
-        },
-        sourceType: 'WEB',
       },
-    });
+      'IOS_SHORTCUT',
+      reusable ? 'REUSING' : 'FETCHING',
+      { note },
+    );
 
-    // 添加标签关联
-    if (tags && tags.length > 0) {
-      // 查找或创建标签
-      for (const tagName of tags) {
-        const tag = await this.prisma.tag.upsert({
-          where: { 
-            userId_name: { userId, name: tagName }
-          },
-          update: {},
-          create: {
-            userId,
-            name: tagName,
-            color: this.getRandomTagColor(),
+    try {
+      if (reusable) {
+        const content = await this.materializeReusableContent(userId, reusable, submission.id, {
+          source: 'IOS_SHORTCUT',
+          tagNames: tags,
+          submissionMetadata: { note },
+          extraContentMetadata: {
+            quickAddNote: note,
+            quickAddSource: 'ios_shortcut',
           },
         });
 
-        await this.prisma.contentTag.create({
-          data: {
-            contentId: content.id,
-            tagId: tag.id,
-          },
-        });
+        return {
+          success: true,
+          contentId: content.id,
+          title: content.title,
+          url: content.url,
+          message: 'Content added successfully',
+          isExisting: false,
+          submissionId: submission.id,
+        };
       }
+
+      const { title, contentText, metadata } = await this.fetchWebContent(url);
+      const content = await this.prisma.content.create({
+        data: {
+          userId,
+          url,
+          title,
+          contentText,
+          metadata: {
+            ...metadata,
+            quickAddNote: note,
+            quickAddSource: 'ios_shortcut',
+          },
+          sourceType: 'WEB',
+        },
+      });
+
+      await this.attachTagNames(userId, content.id, tags);
+      await this.createInitialReview(userId, content.id);
+      await this.updateSubmissionRecord(submission.id, {
+        contentId: content.id,
+        title: content.title,
+        status: 'SUMMARIZING',
+        metadata: {
+          contentMetadata: content.metadata,
+          note,
+        },
+      });
+      this.triggerAutoSummary(content.id, submission.id);
+
+      return {
+        success: true,
+        contentId: content.id,
+        title: content.title,
+        url: content.url,
+        message: 'Content added successfully',
+        isExisting: false,
+        submissionId: submission.id,
+      };
+    } catch (error) {
+      await this.markSubmissionFailed(submission.id, error);
+      throw error;
     }
-
-    // 创建初始复习计划
-    await this.createInitialReview(userId, content.id);
-
-    return {
-      success: true,
-      contentId: content.id,
-      title: content.title,
-      url: content.url,
-      message: 'Content added successfully',
-      isExisting: false,
-    };
   }
 
   private extractUrlFromText(text: string): string | null {
@@ -568,5 +715,297 @@ export class ContentService {
         reviewDate: tomorrow,
       },
     });
+  }
+
+  private async attachTagIds(contentId: string, tagIds?: string[]) {
+    if (!tagIds || tagIds.length === 0) {
+      return;
+    }
+
+    await this.prisma.contentTag.createMany({
+      data: tagIds.map((tagId) => ({
+        contentId,
+        tagId,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  private async attachTagNames(userId: string, contentId: string, tagNames?: string[]) {
+    if (!tagNames || tagNames.length === 0) {
+      return;
+    }
+
+    for (const tagName of tagNames) {
+      const tag = await this.prisma.tag.upsert({
+        where: {
+          userId_name: { userId, name: tagName },
+        },
+        update: {},
+        create: {
+          userId,
+          name: tagName,
+          color: this.getRandomTagColor(),
+        },
+      });
+
+      await this.prisma.contentTag.create({
+        data: {
+          contentId,
+          tagId: tag.id,
+        },
+      });
+    }
+  }
+
+  private async findReusableContentByUrl(url: string) {
+    return this.prisma.content.findFirst({
+      where: {
+        url,
+        contentText: {
+          not: null,
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      include: {
+        summaries: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+  }
+
+  private async findReusableContentByText(contentText: string) {
+    return this.prisma.content.findFirst({
+      where: {
+        contentText,
+        summary: {
+          not: null,
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      include: {
+        summaries: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+  }
+
+  private async materializeReusableContent(
+    userId: string,
+    reusable: {
+      id: string;
+      url: string | null;
+      title: string;
+      contentText: string | null;
+      rawHtml: string | null;
+      summary: string | null;
+      sourceType: string;
+      metadata: unknown;
+      summaries: Array<{
+        summaryType: 'QUICK' | 'DETAILED' | 'BULLET' | 'QA';
+        summaryText: string;
+        tokensUsed: number;
+        model: string;
+      }>;
+    },
+    submissionId: string,
+    options: {
+      source: SubmissionSource;
+      tagIds?: string[];
+      tagNames?: string[];
+      submissionMetadata?: Record<string, unknown>;
+      extraContentMetadata?: Record<string, unknown>;
+      overrides?: {
+        title?: string;
+        url?: string | null;
+        contentText?: string | null;
+        metadata?: Record<string, unknown>;
+        sourceType?: string;
+      };
+    },
+  ) {
+    const content = await this.prisma.content.create({
+      data: {
+        userId,
+        url: options.overrides?.url !== undefined ? options.overrides.url : reusable.url,
+        title: options.overrides?.title || reusable.title,
+        contentText: options.overrides?.contentText ?? reusable.contentText,
+        rawHtml: reusable.rawHtml,
+        summary: reusable.summary,
+        sourceType: (options.overrides?.sourceType || reusable.sourceType) as any,
+        metadata: {
+          ...(reusable.metadata && typeof reusable.metadata === 'object'
+            ? reusable.metadata as Record<string, unknown>
+            : {}),
+          ...(options.overrides?.metadata ?? {}),
+          ...(options.extraContentMetadata ?? {}),
+        },
+      },
+    });
+
+    await this.attachTagIds(content.id, options.tagIds);
+    await this.attachTagNames(userId, content.id, options.tagNames);
+    await this.createInitialReview(userId, content.id);
+
+    const latestSummary = reusable.summaries[0];
+    if (latestSummary || reusable.summary) {
+      await this.prisma.summary.create({
+        data: {
+          contentId: content.id,
+          summaryType: latestSummary?.summaryType || 'QUICK',
+          summaryText: latestSummary?.summaryText || reusable.summary || '',
+          tokensUsed: latestSummary?.tokensUsed || 0,
+          model: latestSummary?.model || 'shared-reuse',
+        },
+      });
+    }
+
+    await this.updateSubmissionRecord(submissionId, {
+      contentId: content.id,
+      title: content.title,
+      status: latestSummary || reusable.summary ? 'DIGESTED' : 'SUMMARIZING',
+      metadata: {
+        reusedFromContentId: reusable.id,
+        reusedSummary: Boolean(latestSummary || reusable.summary),
+        ...(options.submissionMetadata ?? {}),
+      },
+    });
+
+    if (!latestSummary && !reusable.summary) {
+      this.triggerAutoSummary(content.id, submissionId);
+    }
+
+    return {
+      ...content,
+      isExisting: false,
+      submissionId,
+    };
+  }
+
+  private async createSubmissionRecord(
+    userId: string,
+    input: {
+      title: string;
+      url?: string | null;
+    },
+    source: SubmissionSource,
+    status: SubmissionStatus,
+    metadata?: Record<string, unknown>,
+  ) {
+    return this.prisma.contentSubmission.create({
+      data: {
+        userId,
+        source,
+        status,
+        title: input.title,
+        url: input.url ?? null,
+        metadata: metadata ?? undefined,
+      },
+    });
+  }
+
+  private async updateSubmissionRecord(
+    submissionId: string,
+    update: {
+      contentId?: string;
+      title?: string;
+      status?: SubmissionStatus;
+      metadata?: Record<string, unknown>;
+    },
+  ) {
+    return this.prisma.contentSubmission.update({
+      where: { id: submissionId },
+      data: {
+        contentId: update.contentId,
+        title: update.title,
+        status: update.status,
+        metadata: update.metadata,
+      },
+    });
+  }
+
+  private async createDuplicateSubmission(
+    userId: string,
+    existing: {
+      id: string;
+      title: string;
+      url?: string | null;
+      createdAt: Date;
+    },
+    source: SubmissionSource,
+    metadata?: Record<string, unknown>,
+  ) {
+    const originalSubmission = await this.prisma.contentSubmission.findFirst({
+      where: {
+        userId,
+        contentId: existing.id,
+        status: {
+          not: 'DUPLICATE',
+        },
+      },
+      orderBy: { submittedAt: 'asc' },
+      select: { id: true },
+    });
+
+    return this.prisma.contentSubmission.create({
+      data: {
+        userId,
+        contentId: existing.id,
+        duplicateOfSubmissionId: originalSubmission?.id,
+        source,
+        status: 'DUPLICATE',
+        title: existing.title,
+        url: existing.url ?? null,
+        metadata: {
+          firstSeenAt: existing.createdAt.toISOString(),
+          ...(metadata ?? {}),
+        },
+      },
+    });
+  }
+
+  private getSubmissionTitle(url: string) {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  }
+
+  private async markSubmissionFailed(submissionId: string, error: unknown) {
+    await this.prisma.contentSubmission.update({
+      where: { id: submissionId },
+      data: {
+        status: 'FAILED',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+
+  private triggerAutoSummary(contentId: string, submissionId: string) {
+    void this.aiService
+      .generateSummary(contentId, 'QUICK')
+      .then(async () => {
+        await this.prisma.contentSubmission.update({
+          where: { id: submissionId },
+          data: { status: 'DIGESTED', errorMessage: null },
+        });
+      })
+      .catch(async (error) => {
+        this.logger.warn(
+          `Auto summary failed for content ${contentId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        await this.markSubmissionFailed(submissionId, error);
+      });
   }
 }

@@ -10,8 +10,8 @@ export function Card({ children, className, isHoverable, ...props }: CardProps) 
   return (
     <div
       className={cn(
-        'bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800',
-        isHoverable && 'hover:shadow-md transition-shadow duration-200 cursor-pointer',
+        'card dark:border-gray-800 dark:bg-gray-900/92',
+        isHoverable && 'cursor-pointer hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)]',
         className
       )}
       {...props}
@@ -23,7 +23,7 @@ export function Card({ children, className, isHoverable, ...props }: CardProps) 
 
 export function CardHeader({ children, className }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('px-4 py-3 border-b border-gray-100 dark:border-gray-800', className)}>
+    <div className={cn('px-5 py-4 border-b border-gray-100 dark:border-gray-800', className)}>
       {children}
     </div>
   );
@@ -47,7 +47,7 @@ export function CardDescription({ children, className }: React.HTMLAttributes<HT
 
 export function CardContent({ children, className }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('p-4', className)}>
+    <div className={cn('p-5', className)}>
       {children}
     </div>
   );
@@ -59,7 +59,7 @@ export function CardBody({ children, className }: React.HTMLAttributes<HTMLDivEl
 
 export function CardFooter({ children, className }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('px-4 py-3 border-t border-gray-100 dark:border-gray-800', className)}>
+    <div className={cn('px-5 py-4 border-t border-gray-100 dark:border-gray-800', className)}>
       {children}
     </div>
   );

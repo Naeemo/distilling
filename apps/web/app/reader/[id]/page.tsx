@@ -391,7 +391,7 @@ export default function ReaderPage() {
                     </div>
                   ) : (
                     <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                      点击"生成摘要"获取 AI 生成的内容摘要
+                      摘要通常会在保存后自动开始生成。若暂时还没出来，可以稍等片刻或手动重新生成。
                     </p>
                   )}
                 </CardBody>

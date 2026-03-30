@@ -109,7 +109,7 @@ export function QuickCollect({ onSuccess }: QuickCollectProps) {
 
     setNotice({
       tone: 'info',
-      message: '内容已保存。',
+      message: '内容已保存，正在自动生成摘要。',
     });
   };
 
@@ -141,7 +141,7 @@ export function QuickCollect({ onSuccess }: QuickCollectProps) {
           setInputText('');
           setNotice({
             tone: 'info',
-            message: '内容已保存。',
+            message: '内容已保存，正在自动生成摘要。',
           });
           await onSuccess?.();
         }
