@@ -1,7 +1,75 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/stores/auth';
 
 export default function HomePage() {
+  const { isAuthenticated, isLoading, clearAuth } = useAuthStore();
+
+  const handleLogout = () => {
+    clearAuth();
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  };
+
+  const renderHeaderActions = () => {
+    if (isLoading) {
+      return <div className="h-10 w-40" aria-hidden="true" />;
+    }
+
+    if (isAuthenticated) {
+      return (
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard">
+            <Button>进入知识库</Button>
+          </Link>
+          <Button variant="ghost" onClick={handleLogout}>
+            退出登录
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-4">
+        <Link href="/login">
+          <Button variant="ghost">登录</Button>
+        </Link>
+        <Link href="/register">
+          <Button>免费注册</Button>
+        </Link>
+      </div>
+    );
+  };
+
+  const renderHeroActions = () => {
+    if (isLoading) {
+      return <div className="mt-10 h-12" aria-hidden="true" />;
+    }
+
+    if (isAuthenticated) {
+      return (
+        <div className="mt-10 flex justify-center">
+          <Link href="/dashboard">
+            <Button size="lg">进入知识库</Button>
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+        <Link href="/register">
+          <Button size="lg">免费开始使用</Button>
+        </Link>
+        <Link href="/login">
+          <Button variant="secondary" size="lg">已有账号？登录</Button>
+        </Link>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -24,14 +92,7 @@ export default function HomePage() {
             <span className="text-xl font-bold">知萃</span>
           </div>
           
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">登录</Button>
-            </Link>
-            <Link href="/register">
-              <Button>免费注册</Button>
-            </Link>
-          </div>
+          {renderHeaderActions()}
         </div>
       </header>
 
@@ -51,14 +112,7 @@ export default function HomePage() {
               让AI帮你高效处理和记忆知识。
             </p>
             
-            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register">
-                <Button size="lg">免费开始使用</Button>
-              </Link>
-              <Link href="/login">
-                <Button variant="secondary" size="lg">已有账号？登录</Button>
-              </Link>
-            </div>
+            {renderHeroActions()}
           </div>
         </section>
 
