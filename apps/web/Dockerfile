@@ -2,9 +2,11 @@ FROM node:24-alpine AS deps
 
 RUN npm install -g pnpm@10.33.0
 
-WORKDIR /app/apps/web
+WORKDIR /app
 
-COPY apps/web/package.json ./
+COPY package.json pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/api/package.json ./apps/api/package.json
 
 RUN pnpm install --no-frozen-lockfile
 
@@ -14,8 +16,14 @@ RUN npm install -g pnpm@10.33.0
 
 WORKDIR /app/apps/web
 
+COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/apps/web/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ../api/node_modules
+COPY package.json /app/package.json
+COPY pnpm-workspace.yaml /app/pnpm-workspace.yaml
+COPY scripts /app/scripts
 COPY apps/web ./
+COPY apps/api/package.json ../api/package.json
 COPY apps/api/prisma ../api/prisma
 
 ARG NEXT_PUBLIC_API_URL
