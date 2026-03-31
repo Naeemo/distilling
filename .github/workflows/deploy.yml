@@ -218,6 +218,8 @@ jobs:
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
+            --set-secrets DATABASE_URL=database-url:latest \
+            --set-secrets BETTER_AUTH_SECRET=jwt-secret:latest \
             --memory 1Gi \
             --cpu 1 \
             --concurrency 80 \
@@ -235,6 +237,22 @@ jobs:
           gcloud run services update $FRONTEND_SERVICE \
             --region $REGION \
             --update-env-vars BETTER_AUTH_URL=${{ steps.deploy-meta.outputs.frontend_url }},NEXT_PUBLIC_APP_URL=${{ steps.deploy-meta.outputs.frontend_url }},BETTER_AUTH_TRUSTED_ORIGINS=${{ steps.deploy-meta.outputs.frontend_url }}
+
+      - name: Frontend Auth Smoke Test
+        run: |
+          STATUS=$(curl -sS -o /tmp/frontend-auth-smoke.json -w '%{http_code}' \
+            '${{ steps.deploy-meta.outputs.frontend_url }}/api/auth/sign-in/email' \
+            -H 'origin: ${{ steps.deploy-meta.outputs.frontend_url }}' \
+            -H 'content-type: application/json' \
+            --data '{"email":"smoke-check@example.com","password":"invalid-password"}')
+
+          echo "Auth smoke status: $STATUS"
+          cat /tmp/frontend-auth-smoke.json || true
+
+          if [ "$STATUS" = "403" ] || [ "$STATUS" -ge 500 ]; then
+            echo "Auth smoke check failed with status $STATUS"
+            exit 1
+          fi
 
       - name: Update API CORS URL
         run: |

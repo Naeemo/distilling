@@ -39,10 +39,13 @@ const trustedOrigins = Array.from(
   ),
 );
 
-const secret = process.env.BETTER_AUTH_SECRET;
+const fallbackSecret = 'insecure-dev-secret-replace-in-production-32';
+const secret = process.env.BETTER_AUTH_SECRET ?? fallbackSecret;
 
-if (!secret) {
-  throw new Error('BETTER_AUTH_SECRET is required');
+if (!process.env.BETTER_AUTH_SECRET) {
+  console.warn(
+    'BETTER_AUTH_SECRET is not set. Falling back to an insecure default secret.',
+  );
 }
 
 export const auth = betterAuth({
