@@ -1,11 +1,21 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+
+async function getAuth() {
+  const { auth } = await import('@/lib/auth');
+  return auth;
+}
 
 export async function getSession() {
-  return auth.api.getSession({
-    headers: await headers(),
-  });
+  try {
+    const auth = await getAuth();
+    return auth.api.getSession({
+      headers: await headers(),
+    });
+  } catch (error) {
+    console.error('Failed to load session from Better Auth:', error);
+    return null;
+  }
 }
 
 export async function requireSession() {
