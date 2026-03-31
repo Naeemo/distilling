@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   /* 颜色系统 */
@@ -97,6 +98,21 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .hero-float {
+    animation: heroFloat 9s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .hero-drift {
+    animation: heroDrift 14s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+
+  .hero-glow {
+    animation: heroGlow 10s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
   
   .animate-in {
     animation: fadeIn 0.2s ease-out;
@@ -111,5 +127,48 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  @keyframes heroFloat {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -10px, 0);
+    }
+  }
+
+  @keyframes heroDrift {
+    0%,
+    100% {
+      opacity: 0.72;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      opacity: 0.95;
+      transform: translate3d(-18px, 12px, 0) scale(1.06);
+    }
+  }
+
+  @keyframes heroGlow {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: translate3d(14px, -10px, 0) scale(1.08);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-float,
+  .hero-drift,
+  .hero-glow,
+  .animate-in {
+    animation: none !important;
   }
 }

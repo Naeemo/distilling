@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { AuthShell } from '@/components/auth-shell';
 import { authClient } from '@/lib/auth-client';
 import { syncExtensionTokenFromSession } from '@/lib/extension';
 
@@ -47,7 +47,7 @@ export function RegisterForm() {
       }
 
       await syncExtensionTokenFromSession();
-      router.push('/dashboard');
+      router.push('/feeds');
       router.refresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '注册失败，请稍后重试';
@@ -63,112 +63,102 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center gap-2">
-            <svg
-              className="w-10 h-10 text-primary-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
-            <span className="text-2xl font-bold">知萃</span>
-          </Link>
+    <AuthShell
+      eyebrow="Register"
+      title="创建你的信息提纯工作台"
+      description="把链接、微信文章与零散笔记统一收口，先看到高价值结论，再决定哪些内容值得继续深入。"
+    >
+      <div>
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">创建账户</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+            注册后即可开始构建自己的结论流与记录时间轴。
+          </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <h1 className="text-xl font-semibold text-center">创建账户</h1>
-            <p className="text-sm text-gray-500 text-center mt-1">
-              开始使用知萃管理您的知识
-            </p>
-          </CardHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="昵称"
+            name="name"
+            type="text"
+            aria-label="注册昵称"
+            data-testid="register-name"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="怎么称呼你"
+          />
 
-          <CardBody>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                label="昵称"
-                type="text"
-                aria-label="注册昵称"
-                data-testid="register-name"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="您的昵称"
-              />
+          <Input
+            label="邮箱"
+            name="email"
+            type="email"
+            aria-label="注册邮箱"
+            data-testid="register-email"
+            autoComplete="email"
+            spellCheck={false}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
+            required
+          />
 
-              <Input
-                label="邮箱"
-                type="email"
-                aria-label="注册邮箱"
-                data-testid="register-email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-              />
+          <Input
+            label="密码"
+            name="password"
+            type="password"
+            aria-label="注册密码"
+            data-testid="register-password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="至少 6 个字符"
+            required
+          />
 
-              <Input
-                label="密码"
-                type="password"
-                aria-label="注册密码"
-                data-testid="register-password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
+          <Input
+            label="确认密码"
+            name="confirmPassword"
+            type="password"
+            aria-label="确认注册密码"
+            data-testid="register-confirm-password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="再次输入密码"
+            required
+          />
 
-              <Input
-                label="确认密码"
-                type="password"
-                aria-label="确认注册密码"
-                data-testid="register-confirm-password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-
-              {error && (
-                <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full"
-                isLoading={isLoading}
-                data-testid="register-submit"
-              >
-                注册
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center text-sm">
-              <span className="text-gray-500">已有账户？</span>{' '}
-              <Link
-                href="/login"
-                className="text-primary-600 hover:text-primary-700 font-medium"
-              >
-                立即登录
-              </Link>
+          {error && (
+            <div
+              className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/12 dark:text-red-300"
+              role="alert"
+              aria-live="polite"
+            >
+              {error}
             </div>
-          </CardBody>
-        </Card>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            isLoading={isLoading}
+            data-testid="register-submit"
+          >
+            注册
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center text-sm">
+          <span className="text-gray-500 dark:text-gray-400">已有账户？</span>{' '}
+          <Link
+            href="/login"
+            className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-300 dark:hover:text-primary-200"
+          >
+            立即登录
+          </Link>
+        </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }

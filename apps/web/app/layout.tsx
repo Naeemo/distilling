@@ -9,13 +9,13 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "知萃 InfoDigest - AI驱动的信息消化工具",
-  description: "采集、摘要、阅读、复习，一站式信息管理。让AI帮你高效处理和记忆知识。",
-  keywords: ["知识管理", "AI摘要", "阅读工具", "间隔重复", "知识库"],
+  title: "知萃 InfoDigest - 把待看的输入堆提纯成真正值得读的结论流",
+  description: "面向研究者、内容工作者和高频信息消费者的信息提纯工作台。统一采集、自动去重脱水，先输出高价值结论，再决定是否进入原文。",
+  keywords: ["信息提纯", "信息脱水", "AI 摘要", "信息中心", "内容消化"],
   authors: [{ name: "InfoDigest Team" }],
   openGraph: {
     title: "知萃 InfoDigest",
-    description: "AI驱动的信息消化工具",
+    description: "把待看的输入堆提纯成真正值得读的结论流",
     type: "website",
   },
 };
