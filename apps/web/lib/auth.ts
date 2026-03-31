@@ -3,10 +3,42 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { nextCookies } from 'better-auth/next-js';
 import { prisma } from '@/lib/prisma';
 
+function toOrigin(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+const configuredOrigins = (
+  process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? ''
+)
+  .split(',')
+  .map((value) => toOrigin(value.trim()))
+  .filter(Boolean) as string[];
+
 const baseURL =
-  process.env.BETTER_AUTH_URL ??
-  process.env.NEXT_PUBLIC_APP_URL ??
+  toOrigin(process.env.BETTER_AUTH_URL) ??
+  toOrigin(process.env.NEXT_PUBLIC_APP_URL) ??
   'http://localhost:3000';
+
+const trustedOrigins = Array.from(
+  new Set(
+    [
+      baseURL,
+      toOrigin(process.env.BETTER_AUTH_URL),
+      toOrigin(process.env.NEXT_PUBLIC_APP_URL),
+      ...configuredOrigins,
+      'http://localhost:3000',
+    ].filter(Boolean) as string[],
+  ),
+);
+
 const secret = process.env.BETTER_AUTH_SECRET;
 
 if (!secret) {
@@ -61,10 +93,6 @@ export const auth = betterAuth({
   verification: {
     modelName: 'Verification',
   },
-  trustedOrigins: [
-    baseURL,
-    process.env.NEXT_PUBLIC_APP_URL,
-    'http://localhost:3000',
-  ].filter(Boolean) as string[],
+  trustedOrigins,
   plugins: [nextCookies()],
 });

@@ -230,6 +230,12 @@ jobs:
           FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --region $REGION --format='value(status.url)')
           echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Update Frontend Auth Origins
+        run: |
+          gcloud run services update $FRONTEND_SERVICE \
+            --region $REGION \
+            --update-env-vars BETTER_AUTH_URL=${{ steps.deploy-meta.outputs.frontend_url }},NEXT_PUBLIC_APP_URL=${{ steps.deploy-meta.outputs.frontend_url }},BETTER_AUTH_TRUSTED_ORIGINS=${{ steps.deploy-meta.outputs.frontend_url }}
+
       - name: Update API CORS URL
         run: |
           gcloud run services update $SERVICE_NAME \
