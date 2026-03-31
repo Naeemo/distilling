@@ -211,6 +211,16 @@ jobs:
           docker push ${{ steps.build-meta.outputs.frontend_image }}
           docker push ${{ steps.build-meta.outputs.frontend_image_latest }}
 
+      - name: Resolve Frontend URL
+        id: deploy-meta
+        run: |
+          FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --region $REGION --format='value(status.url)')
+          if [ -z "$FRONTEND_URL" ]; then
+            echo "Failed to resolve frontend service URL"
+            exit 1
+          fi
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
+
       - name: Deploy Frontend to Cloud Run
         run: |
           gcloud run deploy $FRONTEND_SERVICE \
@@ -218,31 +228,28 @@ jobs:
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
+            --no-traffic \
             --add-cloudsql-instances $PROJECT_ID:$REGION:$DB_INSTANCE_NAME \
             --set-secrets DATABASE_URL=database-url:latest \
             --set-secrets BETTER_AUTH_SECRET=jwt-secret:latest \
+            --set-env-vars BETTER_AUTH_URL=${{ steps.deploy-meta.outputs.frontend_url }},NEXT_PUBLIC_APP_URL=${{ steps.deploy-meta.outputs.frontend_url }},BETTER_AUTH_TRUSTED_ORIGINS=${{ steps.deploy-meta.outputs.frontend_url }} \
             --memory 1Gi \
             --cpu 1 \
             --concurrency 80 \
             --max-instances 10 \
             --min-instances 0
 
-      - name: Capture Frontend URL
-        id: deploy-meta
+      - name: Capture Candidate Revision URL
+        id: revision-meta
         run: |
-          FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --region $REGION --format='value(status.url)')
-          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Update Frontend Auth Origins
-        run: |
-          gcloud run services update $FRONTEND_SERVICE \
-            --region $REGION \
-            --update-env-vars BETTER_AUTH_URL=${{ steps.deploy-meta.outputs.frontend_url }},NEXT_PUBLIC_APP_URL=${{ steps.deploy-meta.outputs.frontend_url }},BETTER_AUTH_TRUSTED_ORIGINS=${{ steps.deploy-meta.outputs.frontend_url }}
+          REVISION_NAME=$(gcloud run services describe $FRONTEND_SERVICE --region $REGION --format='value(status.latestCreatedRevisionName)')
+          REVISION_URL=$(gcloud run revisions describe "$REVISION_NAME" --region $REGION --format='value(status.address.url)')
+          echo "revision_url=$REVISION_URL" >> "$GITHUB_OUTPUT"
 
       - name: Frontend Auth Smoke Test
         run: |
           STATUS=$(curl -sS -o /tmp/frontend-auth-smoke.json -w '%{http_code}' \
-            '${{ steps.deploy-meta.outputs.frontend_url }}/api/auth/sign-in/email' \
+            '${{ steps.revision-meta.outputs.revision_url }}/api/auth/sign-in/email' \
             -H 'origin: ${{ steps.deploy-meta.outputs.frontend_url }}' \
             -H 'content-type: application/json' \
             --data '{"email":"smoke-check@example.com","password":"invalid-password"}')
@@ -254,6 +261,12 @@ jobs:
             echo "Auth smoke check failed with status $STATUS"
             exit 1
           fi
+
+      - name: Shift Frontend Traffic to Latest
+        run: |
+          gcloud run services update-traffic $FRONTEND_SERVICE \
+            --region $REGION \
+            --to-latest
 
       - name: Update API CORS URL
         run: |
