@@ -38,6 +38,7 @@ pnpm --filter @infodigest/web build
 ## Gotchas
 
 - Local frontend API calls default to `/api/v1`, which is now handled by Next.js route handlers that forward to the internal Nest API.
+- Web `dev` / `build` / `type-check` now use the shared Prisma sync helper (`scripts/prisma-generate-if-needed.mjs`) to avoid redundant `prisma generate` runs.
 - Better Auth owns browser sessions in this package; do not reintroduce browser-managed JWT refresh logic.
 - Quick Collect accepts URLs, WeChat shares, plain text, and Markdown.
 - The knowledge graph explore route is large and easy to destabilize with broad refactors.

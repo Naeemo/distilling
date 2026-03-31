@@ -1,6 +1,6 @@
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 
-RUN npm install -g pnpm@9.15.0
+RUN npm install -g pnpm@10.33.0
 
 WORKDIR /app/apps/web
 
@@ -8,9 +8,9 @@ COPY apps/web/package.json ./
 
 RUN pnpm install --no-frozen-lockfile
 
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
-RUN npm install -g pnpm@9.15.0
+RUN npm install -g pnpm@10.33.0
 
 WORKDIR /app/apps/web
 
@@ -26,7 +26,7 @@ ENV NODE_ENV=production
 
 RUN pnpm build
 
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 

@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:api": "pnpm --filter @infodigest/api dev",
+    "dev:web": "pnpm --filter @infodigest/web dev",
+    "dev:core": "turbo run dev --filter=@infodigest/api --filter=@infodigest/web",
+    "dev:local": "pnpm setup:local && pnpm infra:up && pnpm prisma:sync && pnpm dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:e2e": "playwright test",
@@ -14,6 +18,15 @@
     "test:e2e:p1": "playwright test --grep @p1",
     "test:e2e:ui": "playwright test --ui",
     "clean": "turbo run clean && rm -rf node_modules",
+    "setup:local": "node scripts/bootstrap-local.mjs",
+    "infra:up": "node scripts/infra.mjs up -d",
+    "infra:down": "node scripts/infra.mjs down",
+    "infra:ps": "node scripts/infra.mjs ps",
+    "infra:logs": "node scripts/infra.mjs logs -f --tail=120",
+    "infra:reset": "node scripts/infra.mjs down -v && node scripts/infra.mjs up -d",
+    "prisma:sync": "node scripts/prisma-generate-if-needed.mjs",
+    "verify:changed": "node scripts/verify-changed.mjs",
+    "verify:full": "node scripts/verify-changed.mjs --full",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
@@ -31,7 +44,7 @@
     "vitepress": "^1.6.4"
   },
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
   }
 }

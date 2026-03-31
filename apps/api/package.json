@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "nest build",
-    "dev": "nest start --watch",
+    "build": "node ../../scripts/prisma-generate-if-needed.mjs && nest build",
+    "dev": "node ../../scripts/prisma-generate-if-needed.mjs && nest start --watch",
     "start": "nest start",
-    "start:debug": "nest start --debug --watch",
+    "start:debug": "node ../../scripts/prisma-generate-if-needed.mjs && nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "pnpm run type-check",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "type-check": "prisma generate && tsc --noEmit",
+    "type-check": "node ../../scripts/prisma-generate-if-needed.mjs && tsc --noEmit",
+    "prisma:generate": "prisma generate",
     "clean": "rm -rf dist"
   },
   "dependencies": {

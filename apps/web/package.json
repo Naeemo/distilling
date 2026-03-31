@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm prisma generate --schema ../api/prisma/schema.prisma && next dev --webpack",
-    "build": "pnpm prisma generate --schema ../api/prisma/schema.prisma && next build --webpack",
+    "dev": "node ../../scripts/prisma-generate-if-needed.mjs && next dev --webpack",
+    "build": "node ../../scripts/prisma-generate-if-needed.mjs && next build --webpack",
     "start": "next start",
     "lint": "pnpm run type-check",
-    "type-check": "pnpm prisma generate --schema ../api/prisma/schema.prisma && tsc --noEmit",
+    "type-check": "node ../../scripts/prisma-generate-if-needed.mjs && tsc --noEmit",
+    "prisma:generate": "prisma generate --schema ../api/prisma/schema.prisma",
     "clean": "rm -rf .next"
   },
   "dependencies": {

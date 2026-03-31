@@ -1,8 +1,8 @@
 # 生产环境 Dockerfile - NestJS API
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 # 安装 pnpm
-RUN npm install -g pnpm@9.15.0
+RUN npm install -g pnpm@10.33.0
 
 WORKDIR /app
 
@@ -23,9 +23,9 @@ RUN cd apps/api && npx prisma generate
 RUN pnpm --filter @infodigest/api build
 
 # 生产镜像
-FROM node:20-alpine
+FROM node:24-alpine
 
-RUN npm install -g pnpm@9.15.0
+RUN npm install -g pnpm@10.33.0
 
 WORKDIR /app
 

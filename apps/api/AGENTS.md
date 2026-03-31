@@ -42,7 +42,7 @@ pnpm --filter @infodigest/api test
 
 ## Gotchas
 
-- `type-check` runs `prisma generate` first; expect generated client output to matter for types.
+- API `dev` / `build` / `type-check` now call the shared root Prisma sync helper (`scripts/prisma-generate-if-needed.mjs`) first; Prisma client freshness still matters for types.
 - Browser auth now lives in `apps/web`; this API should only trust internal Next.js-to-Nest requests plus explicit public token ingress paths proxied by Next.
 - Prisma schema changes ripple into multiple modules quickly.
 - Ingestion changes often affect web, extension, and docs at the same time.

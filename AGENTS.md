@@ -40,11 +40,17 @@ If a change affects both audiences, update both systems independently instead of
 ## Common commands
 
 ```bash
+nvm use
 pnpm install
 pnpm dev
+pnpm dev:local
+pnpm setup:local
+pnpm infra:up
+pnpm infra:down
 pnpm build
 pnpm type-check
 pnpm lint
+pnpm verify:changed
 pnpm docs:dev
 pnpm docs:build
 ```
@@ -63,6 +69,7 @@ pnpm db:studio
 - web-only changes: `pnpm --filter @infodigest/web type-check`
 - extension-only changes: `pnpm --filter @infodigest/extension build`
 - docs-only changes: `pnpm docs:build`
+- changed-scope local iteration: `pnpm verify:changed`
 - broad changes: `pnpm type-check` and `pnpm lint`
 
 ## Where to look next

@@ -16,11 +16,13 @@ InfoDigest is a pnpm monorepo for collecting, analyzing, reading, and revisiting
 git clone https://github.com/Naeemo/distilling.git
 cd distilling
 
+nvm use
 pnpm install
-cp apps/api/.env.example apps/api/.env
-docker-compose up -d
+pnpm setup:local
+pnpm infra:up
 pnpm db:migrate
-pnpm dev
+pnpm prisma:sync
+pnpm dev:core
 ```
 
 Local endpoints:
@@ -28,6 +30,14 @@ Local endpoints:
 - Web: `http://localhost:3000`
 - API: `http://localhost:3001`
 - Swagger: `http://localhost:3001/api/docs`
+
+For day-to-day iteration, `pnpm dev:local` will:
+
+1. create missing `apps/api/.env` and `apps/web/.env` from examples
+2. synchronize `INTERNAL_SERVICE_TOKEN` across API/Web env files
+3. ensure infra containers are up with Docker/OrbStack
+4. run Prisma generate only when schema changed
+5. start API + Web dev servers
 
 ## Documentation
 
