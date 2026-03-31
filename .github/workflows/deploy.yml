@@ -218,6 +218,7 @@ jobs:
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
+            --add-cloudsql-instances $PROJECT_ID:$REGION:$DB_INSTANCE_NAME \
             --set-secrets DATABASE_URL=database-url:latest \
             --set-secrets BETTER_AUTH_SECRET=jwt-secret:latest \
             --memory 1Gi \
