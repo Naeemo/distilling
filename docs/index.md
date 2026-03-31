@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "InfoDigest"
   text: "Product guide for readers, researchers, and assistants"
-  tagline: "Learn how to collect content, read with context, revisit what matters, and use InfoDigest across web, extension, and mobile-friendly flows."
+  tagline: "Learn how to collect content, review distilled feeds, work actively in the workspace, revisit what matters, and use InfoDigest across web, extension, and mobile-friendly flows."
   actions:
     - theme: brand
       text: Start Here
@@ -20,7 +20,9 @@ features:
   - title: Capture from where you already work
     details: Save web links, pasted text, Markdown, and WeChat shares from the web app, extension, or an iOS shortcut flow.
   - title: Read with structure, not just storage
-    details: Use summaries, highlights, tags, and reading states to turn a pile of links into a working knowledge library.
+    details: Use feeds, summaries, highlights, tags, and reading states to turn a pile of links into a working knowledge library.
+  - title: Move from intake to active thinking
+    details: Start from a rough idea in the workspace, pull in references from your saved library, and continue editing an AI-generated draft.
   - title: Return to what matters
     details: Revisit content through spaced review and knowledge graph exploration when you need memory, context, or synthesis.
 ---

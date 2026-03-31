@@ -33,6 +33,27 @@ Use it to:
 - recall the main ideas later
 - support review without reopening the original source every time
 
+## Feed
+
+A feed item is a saved piece of information after InfoDigest has already done the first pass of extraction and distillation.
+
+Use feeds when you want to:
+
+- scan what is worth deeper attention
+- reopen something for reading
+- choose references before moving into active work
+
+## Workspace
+
+The workspace is the active thinking layer of the product.
+
+It is where you:
+
+- start from an initial idea
+- pull in references from your own saved library
+- get an editable draft article
+- continue writing in your own words
+
 ## Highlight and note
 
 Highlights mark the exact parts you want to keep.

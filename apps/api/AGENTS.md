@@ -9,6 +9,7 @@ The API is the system of record for:
 - content ingestion and retrieval
 - highlights, tags, and review data
 - AI summarization and analysis
+- workspace article generation and references
 - knowledge graph data and related outputs
 
 ## Important directories
@@ -23,6 +24,7 @@ The API is the system of record for:
 - `src/modules/review`
 - `src/modules/knowledge-graph`
 - `src/modules/output`
+- `src/modules/workspace`
 - `prisma/schema.prisma`
 
 ## Change guidance
@@ -31,6 +33,7 @@ The API is the system of record for:
 - Put durable model changes in `prisma/schema.prisma`.
 - Treat `browser` as the home for extraction logic that needs a real browser context.
 - Keep provider-specific AI code behind the existing AI service layer when possible.
+- Workspace generation should keep retrieval, prompt construction, parsing, and fallback handling in its own module rather than leaking into generic content ingestion.
 
 ## Commands
 
@@ -46,6 +49,7 @@ pnpm --filter @infodigest/api test
 - Browser auth now lives in `apps/web`; this API should only trust internal Next.js-to-Nest requests plus explicit public token ingress paths proxied by Next.
 - Prisma schema changes ripple into multiple modules quickly.
 - Ingestion changes often affect web, extension, and docs at the same time.
+- Workspace generation currently uses app-local async tasks, not a queue worker; keep state transitions explicit so it can migrate later.
 - LLM runtime config falls back to `LLM_*` env vars when database-backed system config rows are absent; use that path for local Ollama development.
 
 ## When to update docs

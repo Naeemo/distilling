@@ -135,10 +135,10 @@ export default function AdminConfigPage() {
             </p>
           </div>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/feeds')}
             className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
-            ← 返回 Dashboard
+            ← 返回信息中心
           </button>
         </div>
 

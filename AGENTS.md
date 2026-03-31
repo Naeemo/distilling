@@ -8,7 +8,7 @@ Contributor guidance lives in this `AGENTS.md` hierarchy.
 ## Repository shape
 
 - `apps/api`: NestJS API, Prisma schema, extraction, AI, review, and graph logic
-- `apps/web`: Next.js App Router frontend for the product
+- `apps/web`: Next.js App Router frontend for feeds, workspace, reading, and review flows
 - `apps/extension`: Chrome extension for WeChat collection
 - `docs`: VitePress product documentation site
 - `.github/workflows`: CI, docs publishing, and release deployment automation
@@ -69,6 +69,7 @@ pnpm db:studio
 - web-only changes: `pnpm --filter @infodigest/web type-check`
 - extension-only changes: `pnpm --filter @infodigest/extension build`
 - docs-only changes: `pnpm docs:build`
+- workspace feature changes: `pnpm --filter @infodigest/api test -- src/modules/workspace/workspace.service.spec.ts src/modules/workspace/workspace-generation.service.spec.ts` plus package-scoped type-checks for both `@infodigest/api` and `@infodigest/web`
 - changed-scope local iteration: `pnpm verify:changed`
 - broad changes: `pnpm type-check` and `pnpm lint`
 

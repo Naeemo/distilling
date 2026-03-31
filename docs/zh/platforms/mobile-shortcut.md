@@ -36,7 +36,7 @@
 使用前请先：
 
 1. 登录 Web 应用
-2. 打开 `Dashboard -> Integrations`
+2. 打开 `信息中心 -> Integrations`
 3. 生成一个 Integration Token
 4. 把这个 Token 填进快捷指令初始化问题里
 

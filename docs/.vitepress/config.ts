@@ -50,6 +50,7 @@ const createSidebar = (
     firstWorkflow: string;
     workflows: string;
     collectContent: string;
+    workspace: string;
     readAndReview: string;
     knowledgeGraph: string;
     platforms: string;
@@ -83,6 +84,10 @@ const createSidebar = (
         {
           text: text.collectContent,
           link: withLocalePrefix(localePrefix, '/workflows/collect-content'),
+        },
+        {
+          text: text.workspace,
+          link: withLocalePrefix(localePrefix, '/workflows/workspace'),
         },
         {
           text: text.readAndReview,
@@ -156,6 +161,7 @@ export default defineConfig({
           firstWorkflow: 'First Workflow',
           workflows: 'Workflows',
           collectContent: 'Collect Content',
+          workspace: 'Workspace',
           readAndReview: 'Read and Review',
           knowledgeGraph: 'Knowledge Graph',
           platforms: 'Platforms',
@@ -199,6 +205,7 @@ export default defineConfig({
           firstWorkflow: '首次工作流',
           workflows: '工作流',
           collectContent: '收集内容',
+          workspace: '工作区',
           readAndReview: '阅读与复习',
           knowledgeGraph: '知识图谱',
           platforms: '平台',

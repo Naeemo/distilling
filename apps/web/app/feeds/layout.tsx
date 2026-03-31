@@ -1,7 +1,7 @@
 import { AppShell } from '@/components/app-shell';
 import { requireAppUser } from '@/lib/app-user';
 
-export default async function ReviewLayout({
+export default async function FeedsLayout({
   children,
 }: {
   children: React.ReactNode;

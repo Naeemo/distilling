@@ -8,7 +8,8 @@ The web app is the main product surface for:
 
 - login and registration
 - session management and BFF auth
-- dashboard and Quick Collect
+- feeds and Quick Collect
+- workspace article drafting and editing
 - reading
 - review
 - knowledge graph browsing
@@ -25,6 +26,7 @@ The web app is the main product surface for:
 ## Change guidance
 
 - Route changes usually need matching updates in `components`, `stores`, or `lib/api.ts`.
+- Keep `feeds` and `workspace` as distinct user flows even if they share layout chrome.
 - Keep product wording and product-user docs aligned when UI behavior changes.
 - Prefer small, route-scoped edits over sweeping UI refactors unless the task is explicitly a redesign.
 
@@ -41,6 +43,7 @@ pnpm --filter @infodigest/web build
 - Web `dev` / `build` / `type-check` now use the shared Prisma sync helper (`scripts/prisma-generate-if-needed.mjs`) to avoid redundant `prisma generate` runs.
 - Better Auth owns browser sessions in this package; do not reintroduce browser-managed JWT refresh logic.
 - Quick Collect accepts URLs, WeChat shares, plain text, and Markdown.
+- Workspace pages rely on debounced autosave and async generation states; avoid optimistic UI that can overwrite server-generated drafts.
 - The knowledge graph explore route is large and easy to destabilize with broad refactors.
 
 ## When to update docs

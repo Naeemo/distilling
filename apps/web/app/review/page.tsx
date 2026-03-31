@@ -89,7 +89,7 @@ export default function ReviewPage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/feeds')}
               className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -215,8 +215,8 @@ export default function ReviewPage() {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">今日复习完成！</h2>
               <p className="text-gray-500 dark:text-gray-400 mb-6">您已完成所有待复习的内容，明天再来吧~</p>
               
-              <Button onClick={() => router.push('/dashboard')}>
-                返回知识库
+              <Button onClick={() => router.push('/feeds')}>
+                返回信息中心
               </Button>
             </div>
           )}

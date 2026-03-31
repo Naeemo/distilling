@@ -87,7 +87,7 @@
         "key": "integration_token",
         "label": "Integration Token",
         "type": "secure_text",
-        "description": "在 Dashboard -> Integrations 中生成"
+        "description": "在 信息中心 -> Integrations 中生成"
       }
     ]
   },

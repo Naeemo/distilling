@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from 'next/font/google';
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from '@/components/ui/toaster';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={`${manrope.variable} min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100`}>
         <ThemeProvider>
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

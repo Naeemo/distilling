@@ -36,7 +36,7 @@ Think of it as:
 Before using the shortcut:
 
 1. sign in to the web app
-2. open `Dashboard -> Integrations`
+2. open `Feeds -> Integrations`
 3. generate an Integration Token
 4. paste that token into the shortcut setup question
 

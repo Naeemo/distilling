@@ -111,3 +111,39 @@ export interface ContentSubmission {
     contentId: string | null;
   } | null;
 }
+
+export interface WorkspaceReference {
+  contentId: string;
+  title: string;
+  summary: string | null;
+  score: number;
+  reason: string;
+  rank: number;
+  url?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt?: string;
+}
+
+export interface WorkspaceArticle {
+  id: string;
+  type: 'ARTICLE';
+  status: 'GENERATING' | 'READY' | 'FAILED';
+  initialIdea: string;
+  title: string;
+  body: string | null;
+  excerpt: string | null;
+  generationError: string | null;
+  lastGeneratedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceArticleListItem extends WorkspaceArticle {
+  referenceCount: number;
+  hasFewReferences: boolean;
+}
+
+export interface WorkspaceArticleDetail extends WorkspaceArticle {
+  references: WorkspaceReference[];
+  hasFewReferences: boolean;
+}

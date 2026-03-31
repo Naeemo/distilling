@@ -34,6 +34,7 @@ model User {
   insights   ContentInsight[]
   relations  ContentRelation[]
   clusters   TopicCluster[]
+  workspaceItems WorkspaceItem[]
 
   @@index([email])
   @@index([apiTokenPrefix])
@@ -136,6 +137,7 @@ model Content {
   relationsA ContentRelation[] @relation("ContentA")
   relationsB ContentRelation[] @relation("ContentB")
   clusters   ClusterContent[]
+  workspaceReferences WorkspaceReference[]
 
   @@index([userId])
   @@index([status])
@@ -431,6 +433,56 @@ model ClusterContent {
   @@id([clusterId, contentId])
   @@index([contentId])
   @@map("cluster_contents")
+}
+
+enum WorkspaceItemType {
+  ARTICLE
+}
+
+enum WorkspaceItemStatus {
+  GENERATING
+  READY
+  FAILED
+}
+
+model WorkspaceItem {
+  id              String              @id @default(cuid())
+  userId          String
+  type            WorkspaceItemType   @default(ARTICLE)
+  status          WorkspaceItemStatus @default(GENERATING)
+  initialIdea     String              @db.Text
+  title           String              @default("生成中...")
+  body            String?             @db.Text
+  excerpt         String?             @db.Text
+  generationError String?             @db.Text
+  lastGeneratedAt DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user       User                 @relation(fields: [userId], references: [id])
+  references  WorkspaceReference[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, type, updatedAt])
+  @@map("workspace_items")
+}
+
+model WorkspaceReference {
+  id              String   @id @default(cuid())
+  workspaceItemId String
+  contentId       String
+  rank            Int
+  score           Float
+  reason          String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  workspaceItem WorkspaceItem @relation(fields: [workspaceItemId], references: [id], onDelete: Cascade)
+  content       Content       @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceItemId, contentId])
+  @@index([workspaceItemId, rank])
+  @@index([contentId])
+  @@map("workspace_references")
 }
 
 // ==================== 系统配置模块 ====================

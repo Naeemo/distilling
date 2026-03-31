@@ -10,7 +10,7 @@ export default async function AdminLayout({
   const user = session.user as { role?: string | null };
 
   if (user.role !== 'ADMIN') {
-    redirect('/dashboard');
+    redirect('/feeds');
   }
 
   return children;

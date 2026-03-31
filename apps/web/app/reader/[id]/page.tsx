@@ -120,7 +120,7 @@ export default function ReaderPage() {
       setReadingProgress(data.readingProgress || 0);
     } catch (error) {
       console.error('Failed to load content:', error);
-      router.push('/dashboard');
+      router.push('/feeds');
     } finally {
       setIsLoading(false);
     }
@@ -248,7 +248,7 @@ export default function ReaderPage() {
       <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/feeds')}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             data-testid="reader-back"
           >

@@ -8,7 +8,8 @@ Use the web app to:
 
 - sign in and manage your session
 - collect links and pasted text
-- browse your saved library
+- browse your distilled feeds
+- create and edit workspace articles
 - open the reader
 - review past material
 - explore the knowledge graph
@@ -19,14 +20,25 @@ Use the web app to:
 
 The landing page introduces the product and links into sign-in and registration.
 
-### Dashboard
+### Feeds
 
-The dashboard is your library home. It is the fastest way to:
+Feeds is your distilled library home. It is the fastest way to:
 
 - add content
 - filter by reading state
 - search saved items
 - reopen something you were already reading
+
+### Workspace
+
+The workspace is where you actively use information instead of only storing it.
+
+It lets you:
+
+- start from an initial idea
+- pull in references from your saved library
+- get an AI-generated draft article
+- keep editing the draft yourself
 
 ### Reader
 
@@ -52,4 +64,5 @@ The web app is the best default if you:
 
 - [First Workflow](/getting-started/first-workflow)
 - [Collect Content](/workflows/collect-content)
+- [Workspace](/workflows/workspace)
 - [Read and Review](/workflows/read-and-review)

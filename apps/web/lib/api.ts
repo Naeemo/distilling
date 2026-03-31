@@ -199,4 +199,23 @@ export const api = {
         body: JSON.stringify({ rating }),
       }),
   },
+
+  workspace: {
+    listArticles: () => fetchWithAuth('/workspace/articles'),
+    getArticle: (id: string) => fetchWithAuth(`/workspace/articles/${id}`),
+    createArticle: (initialIdea: string) =>
+      fetchWithAuth('/workspace/articles', {
+        method: 'POST',
+        body: JSON.stringify({ initialIdea }),
+      }),
+    updateArticle: (id: string, data: { title?: string; body?: string }) =>
+      fetchWithAuth(`/workspace/articles/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    retryArticle: (id: string) =>
+      fetchWithAuth(`/workspace/articles/${id}/retry`, {
+        method: 'POST',
+      }),
+  },
 };
