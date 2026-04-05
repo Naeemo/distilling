@@ -1,6 +1,7 @@
 'use client';
 
 import { createAuthClient } from 'better-auth/react';
+import { magicLinkClient } from 'better-auth/client/plugins';
 
 function resolveBaseURL() {
   const appURL =
@@ -16,4 +17,5 @@ function resolveBaseURL() {
 
 export const authClient = createAuthClient({
   baseURL: resolveBaseURL(),
+  plugins: [magicLinkClient()],
 });
