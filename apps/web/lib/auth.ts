@@ -1,7 +1,10 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { nextCookies } from 'better-auth/next-js';
+import { magicLink } from 'better-auth/plugins';
 import { prisma } from '@/lib/prisma';
+import { sendMagicLinkEmail } from '@/lib/auth-email';
+import { getConfiguredSocialProviders } from '@/lib/auth-provider-config';
 
 function toOrigin(value?: string | null) {
   if (!value) {
@@ -41,6 +44,7 @@ const trustedOrigins = Array.from(
 
 const fallbackSecret = 'insecure-dev-secret-replace-in-production-32';
 const secret = process.env.BETTER_AUTH_SECRET ?? fallbackSecret;
+const socialProviders = getConfiguredSocialProviders();
 
 if (!process.env.BETTER_AUTH_SECRET) {
   console.warn(
@@ -57,10 +61,9 @@ export const auth = betterAuth({
     provider: 'postgresql',
   }),
   emailAndPassword: {
-    enabled: true,
-    minPasswordLength: 6,
-    maxPasswordLength: 128,
+    enabled: false,
   },
+  socialProviders,
   user: {
     modelName: 'User',
     fields: {
@@ -97,5 +100,12 @@ export const auth = betterAuth({
     modelName: 'Verification',
   },
   trustedOrigins,
-  plugins: [nextCookies()],
+  plugins: [
+    magicLink({
+      sendMagicLink: async ({ email, url }) => {
+        await sendMagicLinkEmail({ email, url });
+      },
+    }),
+    nextCookies(),
+  ],
 });
